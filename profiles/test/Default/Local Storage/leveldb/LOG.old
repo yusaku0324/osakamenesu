@@ -1,0 +1,4 @@
+2025/04/21-15:24:57.577 df0c2f Reusing MANIFEST /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/MANIFEST-000001
+2025/04/21-15:24:57.579 df0c2f Recovering log #7
+2025/04/21-15:24:57.579 df0c2f (ignoring error) /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/000007.log: dropping 7327 bytes; Corruption: checksum mismatch
+2025/04/21-15:24:57.579 df0c2f Reusing old log /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/000007.log 

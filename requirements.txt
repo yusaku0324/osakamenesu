@@ -1,0 +1,6 @@
+undetected-chromedriver
+selenium
+python-dotenv
+pyyaml
+schedule
+requests 

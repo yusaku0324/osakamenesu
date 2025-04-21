@@ -1,0 +1,11 @@
+{
+  "accounts": [
+    {
+      "cookie_file": "kakeru_cookies.json",
+      "csv_file": "/Users/yusaku/kakeru/toukou_kakeru.csv",
+      "base_url": "https://x.com",
+      "pick_count": 1,
+      "video_file_path": "/Users/yusaku/kakeru/"
+    }
+  ]
+}

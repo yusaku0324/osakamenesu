@@ -1,0 +1,840 @@
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+/bin/sh: /Users/yusaku/akiyama/akiyama.py: Permission denied
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫名古屋メン... | 動画: /Users/yusaku/akiyama/動画完成/名古屋メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x000000010257b6c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x0000000102573c9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x00000001020c5e30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x000000010210d170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x000000010214e5f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001021012fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001025406c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x0000000102543988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x000000010252071c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x00000001025441e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000102511750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x0000000102563f58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x00000001025640e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x0000000102573910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫名古屋メン... | 動画: /Users/yusaku/akiyama/動画完成/名古屋メンエスアベ100VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x0000000102e5b6c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x0000000102e53c9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x00000001029a5e30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x00000001029ed170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x0000000102a2e5f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001029e12fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x0000000102e206c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x0000000102e23988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x0000000102e0071c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x0000000102e241e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000102df1750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x0000000102e43f58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x0000000102e440e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x0000000102e53910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x0000000104db36c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x0000000104dabc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x00000001048fde30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000104945170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x00000001049865f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001049392fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x0000000104d786c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x0000000104d7b988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x0000000104d5871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x0000000104d7c1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000104d49750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x0000000104d9bf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x0000000104d9c0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x0000000104dab910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫名古屋メン... | 動画: /Users/yusaku/akiyama/動画完成/名古屋メンエスアベ100VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫沖縄メンエ... | 動画: /Users/yusaku/akiyama/動画完成/沖縄メンエスアベ100VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫群馬メンエ... | 動画: /Users/yusaku/akiyama/動画完成/群馬メンエスアベ90VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001033336c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x000000010332bc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x0000000102e7de30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000102ec5170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x0000000102f065f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x0000000102eb92fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001032f86c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x00000001032fb988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x00000001032d871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x00000001032fc1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x00000001032c9750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x000000010331bf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x000000010331c0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x000000010332b910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ80VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ80VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫広島メンエ... | 動画: /Users/yusaku/akiyama/動画完成/広島メンエスアベ80VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001012436c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x000000010123bc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x0000000100d8de30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000100dd5170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x0000000100e165f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x0000000100dc92fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001012086c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x000000010120b988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x00000001011e871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x000000010120c1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x00000001011d9750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x000000010122bf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x000000010122c0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x000000010123b910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫沖縄メンエ... | 動画: /Users/yusaku/akiyama/動画完成/沖縄メンエスアベ120VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001053136c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x000000010530bc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x0000000104e5de30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000104ea5170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x0000000104ee65f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x0000000104e992fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001052d86c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x00000001052db988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x00000001052b871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x00000001052dc1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x00000001052a9750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x00000001052fbf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x00000001052fc0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x000000010530b910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ80VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001053636c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x000000010535bc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x0000000104eade30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000104ef5170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x0000000104f365f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x0000000104ee92fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001053286c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x000000010532b988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x000000010530871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x000000010532c1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x00000001052f9750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x000000010534bf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x000000010534c0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x000000010535b910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ100VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ100VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫栃木メンエ... | 動画: /Users/yusaku/akiyama/動画完成/栃木メンエスアベ90VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001047f36c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x00000001047ebc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x000000010433de30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000104385170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x00000001043c65f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001043792fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001047b86c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x00000001047bb988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x000000010479871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x00000001047bc1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000104789750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x00000001047dbf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x00000001047dc0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x00000001047eb910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ80VER.mp4
+動画のアップロードが完了しました。
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x0000000102d3f6c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x0000000102d37c9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x0000000102889e30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x00000001028d1170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x00000001029125f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001028c52fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x0000000102d046c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x0000000102d07988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x0000000102ce471c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x0000000102d081e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000102cd5750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x0000000102d27f58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x0000000102d280e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x0000000102d37910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫都内メンエ... | 動画: /Users/yusaku/akiyama/動画完成/都内メンエスアベ60VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x0000000104d6b6c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x0000000104d63c9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x00000001048b5e30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x00000001048fd170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x000000010493e5f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001048f12fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x0000000104d306c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x0000000104d33988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x0000000104d1071c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x0000000104d341e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000104d01750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x0000000104d53f58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x0000000104d540e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x0000000104d63910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+投稿する内容: 🔍出稼ぎ｜在籍｜関東｜都内｜関西｜大阪｜名古屋
+💫名古屋メン... | 動画: /Users/yusaku/akiyama/動画完成/名古屋メンエスアベ100VER.mp4
+動画のアップロード完了待機でタイムアウトしました。 Message: 
+Stacktrace:
+0   chromedriver                        0x00000001008d36c8 cxxbridge1$str$ptr + 2791212
+1   chromedriver                        0x00000001008cbc9c cxxbridge1$str$ptr + 2759936
+2   chromedriver                        0x000000010041de30 cxxbridge1$string$len + 92928
+3   chromedriver                        0x0000000100465170 cxxbridge1$string$len + 384576
+4   chromedriver                        0x00000001004a65f8 cxxbridge1$string$len + 651976
+5   chromedriver                        0x00000001004592fc cxxbridge1$string$len + 335820
+6   chromedriver                        0x00000001008986c4 cxxbridge1$str$ptr + 2549544
+7   chromedriver                        0x000000010089b988 cxxbridge1$str$ptr + 2562540
+8   chromedriver                        0x000000010087871c cxxbridge1$str$ptr + 2418560
+9   chromedriver                        0x000000010089c1e8 cxxbridge1$str$ptr + 2564684
+10  chromedriver                        0x0000000100869750 cxxbridge1$str$ptr + 2357172
+11  chromedriver                        0x00000001008bbf58 cxxbridge1$str$ptr + 2695100
+12  chromedriver                        0x00000001008bc0e0 cxxbridge1$str$ptr + 2695492
+13  chromedriver                        0x00000001008cb910 cxxbridge1$str$ptr + 2759028
+14  libsystem_pthread.dylib             0x000000019ca8c2e4 _pthread_start + 136
+15  libsystem_pthread.dylib             0x000000019ca870fc thread_start + 8
+
+tweetButton が見つからないか、クリック可能になりませんでした。fallbackとして tweetButtonInline を試みます。
+ -> tweetButtonInline で投稿ボタンを取得しました。
+--- アカウント処理完了: akiyama_cookies.json ---
+
+
+--- アカウント処理開始: cookie_file=akiyama_cookies.json, csv_file=/Users/yusaku/akiyama/toukou_akiyama.csv, pick_count=1 ---
+クッキーを適用します: akiyama_cookies.json
+  -> Cookie 追加成功: twid
+  -> Cookie 追加成功: lang
+  -> Cookie 追加成功: ct0
+  -> Cookie 追加成功: att
+  -> Cookie 追加成功: auth_token
+  -> Cookie 追加成功: personalization_id
+  -> Cookie 追加成功: kdt
+  -> Cookie 追加成功: __cf_bm
+  -> Cookie 追加成功: guest_id
+  -> Cookie 追加成功: guest_id_ads
+  -> Cookie 追加成功: gt
+  -> Cookie 追加成功: guest_id_marketing
+クッキーを適用しました: akiyama_cookies.json
+クッキーがないまたはログイン状態が確認できません。手動ログインしてください。
+ログイン完了後、Enterキーを押してください...Traceback (most recent call last):
+  File "/Users/yusaku/akiyama/akiyama.py", line 219, in <module>
+    main()
+    ~~~~^^
+  File "/Users/yusaku/akiyama/akiyama.py", line 215, in main
+    run_for_account(cookie_file, csv_file, base_url, pick_count, default_video_path)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yusaku/akiyama/akiyama.py", line 171, in run_for_account
+    manual_login_flow(driver, cookie_file, base_url)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yusaku/akiyama/akiyama.py", line 65, in manual_login_flow
+    input("ログイン完了後、Enterキーを押してください...")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+EOFError: EOF when reading a line

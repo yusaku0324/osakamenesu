@@ -1,0 +1,6 @@
+{
+    "github.copilot.enable": {
+        "python": true,
+        "python3": true
+    }
+}
