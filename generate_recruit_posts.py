@@ -86,10 +86,23 @@ def create_driver(headless=False):
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--remote-debugging-port=9222")
+        
+    additional_options = os.getenv("CHROME_ADDITIONAL_OPTIONS")
+    if additional_options:
+        for option in additional_options.split():
+            options.add_argument(option)
+            
     options.add_argument("--start-maximized")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+    
+    chrome_path = "/usr/bin/google-chrome"
+    if os.path.exists(chrome_path):
+        options.binary_location = chrome_path
+    
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     driver.implicitly_wait(10)
     return driver

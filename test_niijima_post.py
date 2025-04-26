@@ -38,6 +38,8 @@ def test_niijima_post():
         os.environ["X_COOKIE_PATH"] = cookie_path
         os.environ["CI"] = "true"  # ヘッドレスモードを強制
         
+        os.environ["CHROME_ADDITIONAL_OPTIONS"] = "--disable-gpu --remote-debugging-port=9222"
+        
         result = post_to_twitter(test_tweet)
         
         if result["success"]:
