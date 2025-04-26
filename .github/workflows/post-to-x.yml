@@ -28,7 +28,8 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Setup X cookies
         run: |
-          echo '${{ secrets.X_COOKIES }}' > x_cookies.json
+          echo '${{ secrets.X_NIIJIMA_COOKIES }}' | base64 -d > niijima_cookies.json
+          ln -sf niijima_cookies.json x_cookies.json
       - name: Run post script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
