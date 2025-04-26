@@ -3,4 +3,9 @@ selenium
 python-dotenv
 pyyaml
 schedule
-requests 
+requests openai
+tweepy
+pytest
+pytest-cov
+black
+isort
