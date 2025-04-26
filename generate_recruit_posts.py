@@ -99,9 +99,16 @@ def create_driver(headless=False):
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     
-    chrome_path = "/usr/bin/google-chrome"
-    if os.path.exists(chrome_path):
-        options.binary_location = chrome_path
+    chrome_paths = [
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/google-chrome",
+        "/home/ubuntu/.local/bin/google-chrome"
+    ]
+    for chrome_path in chrome_paths:
+        if os.path.exists(chrome_path):
+            options.binary_location = chrome_path
+            logger.info(f"Chromeバイナリパスを設定: {chrome_path}")
+            break
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     driver.implicitly_wait(10)
