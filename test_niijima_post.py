@@ -112,12 +112,36 @@ def click_element(driver, element):
 
 def paste_text(driver, element, text):
     """テキストを貼り付ける"""
-    pyperclip.copy(text)
-    if sys.platform.startswith('darwin'):
-        paste_keys = (Keys.COMMAND, 'v')
-    else:
-        paste_keys = (Keys.CONTROL, 'v')
-    element.send_keys(*paste_keys)
+    try:
+        element.send_keys(text)
+        logger.info("send_keysでテキストを入力しました")
+        return
+    except Exception as e:
+        logger.info(f"send_keysでの入力に失敗しました: {e}")
+        
+    try:
+        driver.execute_script(f"arguments[0].innerHTML = '{text}';", element)
+        logger.info("JavaScriptでテキストを入力しました")
+        return
+    except Exception as e:
+        logger.info(f"JavaScriptでの入力に失敗しました: {e}")
+    
+    try:
+        pyperclip.copy(text)
+        if sys.platform.startswith('darwin'):
+            paste_keys = (Keys.COMMAND, 'v')
+        else:
+            paste_keys = (Keys.CONTROL, 'v')
+        element.send_keys(*paste_keys)
+        logger.info("Pyperclipでテキストを入力しました")
+    except Exception as e:
+        logger.error(f"テキスト入力に失敗しました: {e}")
+        for char in text:
+            try:
+                element.send_keys(char)
+                time.sleep(0.05)  # 少し遅延を入れる
+            except Exception:
+                pass
 
 def test_niijima_post():
     """niijimaアカウントでメンエス出稼ぎについてのツイートをテスト"""
