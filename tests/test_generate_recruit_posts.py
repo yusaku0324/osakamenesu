@@ -7,6 +7,8 @@ import sys
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 
 import generate_recruit_posts
 
@@ -35,14 +37,17 @@ def mock_openai_response():
 
 
 @pytest.fixture
-def mock_tweepy_response():
-    """Tweepy APIのモックレスポンス"""
-
-    class MockData:
-        def __init__(self):
-            self.data = {"id": "1234567890"}
-
-    return MockData()
+def mock_webdriver():
+    """Seleniumのモックドライバー"""
+    mock_driver = MagicMock()
+    mock_element = MagicMock()
+    mock_driver.find_element.return_value = mock_element
+    mock_wait = MagicMock()
+    mock_wait.until.return_value = mock_element
+    
+    with patch("selenium.webdriver.support.ui.WebDriverWait") as mock_wait_class:
+        mock_wait_class.return_value = mock_wait
+        yield mock_driver
 
 
 def test_generate_recruit_post(mock_openai_response):
@@ -59,30 +64,34 @@ def test_generate_recruit_post(mock_openai_response):
         assert mock_client.chat.completions.create.called
 
 
-def test_post_to_twitter(mock_tweepy_response):
+def test_post_to_twitter(mock_webdriver):
     """post_to_twitter関数のテスト"""
-    with patch("tweepy.Client") as mock_tweepy:
-        mock_client = MagicMock()
-        mock_client.create_tweet.return_value = mock_tweepy_response
-        mock_tweepy.return_value = mock_client
-
-        result = generate_recruit_posts.post_to_twitter("テストツイート")
-
-        assert isinstance(result, dict)
-        assert result["success"] is True
-        assert "tweet_id" in result
-        assert mock_client.create_tweet.called
+    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+        mock_create_driver.return_value = mock_webdriver
+        
+        with patch("generate_recruit_posts.load_cookies") as mock_load_cookies:
+            mock_load_cookies.return_value = True
+            
+            with patch("generate_recruit_posts.is_logged_in") as mock_is_logged_in:
+                mock_is_logged_in.return_value = True
+                
+                with patch("generate_recruit_posts.click_element"):
+                    with patch("generate_recruit_posts.paste_text"):
+                        result = generate_recruit_posts.post_to_twitter("テストツイート")
+                        
+                        assert isinstance(result, dict)
+                        assert result["success"] is True
+                        assert "tweet_id" in result
+                        assert mock_webdriver.get.called
 
 
 def test_post_to_twitter_error():
     """post_to_twitter関数のエラーケーステスト"""
-    with patch("tweepy.Client") as mock_tweepy:
-        mock_client = MagicMock()
-        mock_client.create_tweet.side_effect = Exception("テストエラー")
-        mock_tweepy.return_value = mock_client
-
+    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+        mock_create_driver.side_effect = Exception("テストエラー")
+        
         result = generate_recruit_posts.post_to_twitter("テストツイート")
-
+        
         assert isinstance(result, dict)
         assert result["success"] is False
         assert "error" in result
@@ -96,6 +105,20 @@ def test_add_emojis():
     assert isinstance(result, str)
     assert text in result
     assert len(result) > len(text)
+
+
+def test_random_delay():
+    """random_delay関数のテスト"""
+    result = generate_recruit_posts.random_delay(1.0, 3.0)
+    assert isinstance(result, float)
+    assert 1.0 <= result <= 3.0
+
+
+def test_get_random_emojis():
+    """get_random_emojis関数のテスト"""
+    result = generate_recruit_posts.get_random_emojis(2)
+    assert isinstance(result, str)
+    assert len(result) == 2
 
 
 @patch("generate_recruit_posts.generate_recruit_post")
@@ -151,7 +174,7 @@ def test_main_unicode_error(mock_generate):
         with patch("sys.stdout") as mock_stdout:
             mock_stdout.encoding = "ascii"
 
-            with patch("sys.stdout.reconfigure") as mock_reconfigure:
+            with patch("io.TextIOWrapper"):
                 result = generate_recruit_posts.main()
 
                 assert result == 0
