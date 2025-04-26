@@ -1,11 +1,14 @@
 undetected-chromedriver
 selenium
+webdriver-manager
 python-dotenv
 pyyaml
 schedule
-requests openai
+requests
+openai
+pyperclip
 tweepy
 pytest
 pytest-cov
 black
-isort
+isort    
