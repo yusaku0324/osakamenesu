@@ -38,14 +38,13 @@ class TestSafeClick(unittest.TestCase):
     @patch('bot.utils.safe_click.time.sleep')
     def test_safe_click_retry_success(self, mock_sleep, mock_wait):
         """Test element click with retry success"""
-        mock_element_returned = MagicMock()
-        mock_wait.return_value.until.side_effect = [Exception("Not clickable"), mock_element_returned]
+        mock_wait.return_value.until.side_effect = [Exception("Not clickable"), self.mock_element]
         
         result = safe_click(self.mock_driver, self.mock_element, max_retries=2)
         
         self.assertTrue(result)
         self.assertEqual(mock_wait.call_count, 2)
-        mock_element_returned.click.assert_called_once()
+        self.mock_element.click.assert_called_once()
         mock_sleep.assert_called_once_with(1)  # 2^0 = 1
     
     @patch('bot.utils.safe_click.WebDriverWait')
