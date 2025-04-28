@@ -29,6 +29,8 @@ def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
     """
     try:
         logger.info("投稿画面に移動します...")
+        driver.get("https://x.com/home")
+        time.sleep(3)
         driver.get("https://x.com/compose/tweet")
         
         try:
