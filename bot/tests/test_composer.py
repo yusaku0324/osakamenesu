@@ -216,7 +216,7 @@ class TestComposerFunctions(unittest.TestCase):
         
         self.assertIsNone(result)
     
-    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
+    @patch('bot.utils.safe_click.safe_click_by_selector')
     @patch('time.sleep')
     def test_click_tweet_button_success(self, mock_sleep, mock_safe_click):
         """Test successful tweet button click"""
@@ -233,7 +233,7 @@ class TestComposerFunctions(unittest.TestCase):
         )
         mock_sleep.assert_called_once_with(5)
     
-    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
+    @patch('bot.utils.safe_click.safe_click_by_selector')
     def test_click_tweet_button_no_button(self, mock_safe_click):
         """Test tweet button click with no button found"""
         mock_safe_click.return_value = False
@@ -242,7 +242,7 @@ class TestComposerFunctions(unittest.TestCase):
         
         self.assertFalse(result)
     
-    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
+    @patch('bot.utils.safe_click.safe_click_by_selector')
     def test_click_tweet_button_click_error(self, mock_safe_click):
         """Test tweet button click error"""
         mock_safe_click.side_effect = Exception("Click error")
