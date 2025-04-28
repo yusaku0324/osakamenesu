@@ -1,0 +1,6 @@
+[run]
+omit =
+    bot/csv_to_markdown.py
+    bot/patch_and_render.py
+    bot/services/twitter_client/media_uploader.py
+    */tests/*
