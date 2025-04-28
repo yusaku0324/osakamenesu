@@ -52,3 +52,10 @@ queue/
 *.png
 *.json
 *.yaml.bak
+
+# local artefacts
+profiles/
+queue/
+*.png
+*.json
+*.yaml.bak
