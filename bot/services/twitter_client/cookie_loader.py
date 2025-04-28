@@ -29,7 +29,7 @@ def load_cookies(driver: WebDriver, cookie_path: str) -> bool:
         with open(cookie_path, 'r', encoding='utf-8') as f:
             cookies = json.load(f)
         
-        driver.get("https://x.com")
+        driver.get("https://x.com/home")
         
         driver.delete_all_cookies()
         
