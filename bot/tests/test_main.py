@@ -75,36 +75,28 @@ class TestMainFunctions(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_environ.__setitem__.assert_called_with("TEST_VAR", "test_value")
     
-    @patch('bot.main.argparse.ArgumentParser.parse_args')
     @patch('bot.main.process_queue')
     @patch('bot.main.os.environ')
-    def test_main_with_args(self, mock_environ, mock_process_queue, mock_parse_args):
+    def test_main_with_args(self, mock_environ, mock_process_queue):
         """Test main function with command line arguments"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=self.test_queue_file,
-            qa_file=self.test_qa_file,
-            cookie_path=self.test_cookie_path
-        )
         mock_process_queue.return_value = 0
         
-        result = main()
+        with patch('sys.argv', ['main.py', '--queue-file', self.test_queue_file, 
+                               '--qa-file', self.test_qa_file, 
+                               '--cookie-path', self.test_cookie_path]):
+            result = main()
         
         self.assertEqual(result, 0)
         mock_environ.__setitem__.assert_called_with("COOKIE_PATH", self.test_cookie_path)
         mock_process_queue.assert_called_once_with(self.test_queue_file, self.test_qa_file)
     
-    @patch('bot.main.argparse.ArgumentParser.parse_args')
     @patch('bot.main.process_queue')
-    def test_main_without_args(self, mock_process_queue, mock_parse_args):
+    def test_main_without_args(self, mock_process_queue):
         """Test main function without command line arguments"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=None,
-            qa_file=None,
-            cookie_path=None
-        )
         mock_process_queue.return_value = 0
         
-        result = main()
+        with patch('sys.argv', ['main.py']):
+            result = main()
         
         self.assertEqual(result, 0)
         mock_process_queue.assert_called_once_with(None, None)

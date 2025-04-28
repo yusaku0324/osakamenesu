@@ -81,7 +81,7 @@ class TestDriverFactory(unittest.TestCase):
         driver = create_driver()
         
         self.assertEqual(driver, mock_driver)
-        self.assertFalse(hasattr(mock_options, 'binary_location'))
+        self.assertNotIn('binary_location', mock_options.__dict__)
     
     @patch('bot.services.twitter_client.driver_factory.uc.Chrome')
     @patch('bot.services.twitter_client.driver_factory.uc.ChromeOptions')
