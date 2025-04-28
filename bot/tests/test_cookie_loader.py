@@ -49,7 +49,7 @@ class TestCookieLoaderFunctions(unittest.TestCase):
         result = load_cookies(self.mock_driver, "/path/to/cookies.json")
         
         self.assertTrue(result)
-        self.mock_driver.get.assert_called_once_with("https://x.com")
+        self.mock_driver.get.assert_called_once_with("https://x.com/home")
         self.mock_driver.delete_all_cookies.assert_called_once()
         self.assertEqual(self.mock_driver.add_cookie.call_count, 2)
         self.mock_driver.refresh.assert_called_once()

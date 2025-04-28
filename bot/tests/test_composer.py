@@ -216,32 +216,36 @@ class TestComposerFunctions(unittest.TestCase):
         
         self.assertIsNone(result)
     
-    @patch('bot.services.twitter_client.composer.find_tweet_button')
+    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
     @patch('time.sleep')
-    def test_click_tweet_button_success(self, mock_sleep, mock_find):
+    def test_click_tweet_button_success(self, mock_sleep, mock_safe_click):
         """Test successful tweet button click"""
-        mock_find.return_value = self.mock_element
+        mock_safe_click.return_value = True
         
         result = click_tweet_button(self.mock_driver)
         
         self.assertTrue(result)
-        self.mock_element.click.assert_called_once()
+        mock_safe_click.assert_called_once_with(
+            self.mock_driver,
+            "[data-testid$='tweetButton'],[data-testid$='tweetButtonInline']",
+            timeout=15,
+            max_retries=5
+        )
         mock_sleep.assert_called_once_with(5)
     
-    @patch('bot.services.twitter_client.composer.find_tweet_button')
-    def test_click_tweet_button_no_button(self, mock_find):
+    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
+    def test_click_tweet_button_no_button(self, mock_safe_click):
         """Test tweet button click with no button found"""
-        mock_find.return_value = None
+        mock_safe_click.return_value = False
         
         result = click_tweet_button(self.mock_driver)
         
         self.assertFalse(result)
     
-    @patch('bot.services.twitter_client.composer.find_tweet_button')
-    def test_click_tweet_button_click_error(self, mock_find):
+    @patch('bot.services.twitter_client.composer.safe_click_by_selector')
+    def test_click_tweet_button_click_error(self, mock_safe_click):
         """Test tweet button click error"""
-        mock_find.return_value = self.mock_element
-        self.mock_element.click.side_effect = Exception("Click error")
+        mock_safe_click.side_effect = Exception("Click error")
         
         result = click_tweet_button(self.mock_driver)
         
