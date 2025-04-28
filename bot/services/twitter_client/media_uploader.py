@@ -129,7 +129,7 @@ def upload_media(driver: WebDriver, media_path: str, timeout: int = 30) -> bool:
 
 def upload_multiple_media(driver: WebDriver, media_paths: List[str], timeout: int = 30) -> bool:
     """
-    複数のメディアをアップロードする
+    複数のメディアをアップロードする（最大4つまで）
     
     Args:
         driver: WebDriverインスタンス
@@ -144,17 +144,44 @@ def upload_multiple_media(driver: WebDriver, media_paths: List[str], timeout: in
             logger.warning("アップロードするメディアがありません")
             return True
         
-        success_count = 0
+        if len(media_paths) > 4:
+            logger.warning(f"メディアファイルが4つを超えています。最初の4つのみアップロードします。")
+            media_paths = media_paths[:4]
         
+        try:
+            file_input = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='fileInput']"))
+            )
+        except Exception as e:
+            logger.error(f"メディアアップロードボタンが見つかりません: {e}")
+            return False
+        
+        file_paths = []
         for media_path in media_paths:
-            if upload_media(driver, media_path, timeout):
-                success_count += 1
-                time.sleep(2)
-            else:
-                logger.error(f"メディア {media_path} のアップロードに失敗しました")
+            if not os.path.exists(media_path):
+                logger.error(f"メディアファイルが見つかりません: {media_path}")
+                continue
+            file_paths.append(os.path.abspath(media_path))
         
-        logger.info(f"{success_count}/{len(media_paths)}個のメディアをアップロードしました")
-        return success_count == len(media_paths)
+        if not file_paths:
+            logger.error("有効なメディアファイルがありません")
+            return False
+        
+        logger.info(f"{len(file_paths)}個のメディアファイルを一度にアップロードします")
+        file_input.send_keys("\n".join(file_paths))
+        
+        try:
+            for i in range(len(file_paths)):
+                WebDriverWait(driver, timeout).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, f"[data-testid='attachments'] > div:nth-child({i+1})"))
+                )
+                logger.info(f"メディアファイル {i+1}/{len(file_paths)} のアップロードが完了しました")
+        except Exception as e:
+            logger.error(f"メディアファイルのアップロードがタイムアウトしました: {e}")
+            return False
+        
+        logger.info("すべてのメディアファイルのアップロードが完了しました")
+        return True
     
     except Exception as e:
         logger.error(f"複数メディアのアップロード中にエラーが発生しました: {e}")

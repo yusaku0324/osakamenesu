@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from bot.services.twitter_client.composer import type_tweet_text, click_tweet_button
-from bot.services.twitter_client.media_uploader import prepare_media, upload_media
+from bot.services.twitter_client.media_uploader import prepare_media, upload_media, upload_multiple_media
 
 logger = logging.getLogger(__name__)
 
@@ -85,14 +85,15 @@ def wait_for_tweet_url(driver: WebDriver, timeout: int = 20) -> Optional[str]:
         return None
 
 def post_to_twitter(driver: WebDriver, post_text: str, media_url: Optional[str] = None, 
-                   logger: Optional[logging.Logger] = None) -> Optional[str]:
+                   media_files: Optional[List[str]] = None, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
-    Xに投稿する
+    Xに投稿する（複数動画対応）
     
     Args:
         driver: WebDriverインスタンス
         post_text: 投稿するテキスト
-        media_url: メディアURL（オプション）
+        media_url: メディアURL（オプション、単一ファイル用）
+        media_files: メディアファイルのパスリスト（オプション、複数ファイル用）
         logger: ロガーインスタンス（Noneの場合はモジュールロガーを使用）
         
     Returns:
@@ -107,7 +108,11 @@ def post_to_twitter(driver: WebDriver, post_text: str, media_url: Optional[str] 
         
         time.sleep(5)
         
-        if media_url:
+        if media_files:
+            logger.info(f"{len(media_files)}個のメディアファイルをアップロードします...")
+            if not upload_multiple_media(driver, media_files):
+                logger.warning("複数メディアのアップロードに失敗しました")
+        elif media_url:
             media_path = prepare_media(media_url)
             if media_path:
                 if not upload_media(driver, media_path):
