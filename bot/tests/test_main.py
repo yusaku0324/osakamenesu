@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 
-from bot.main import main, parse_args
+from bot.main import main, process_queue
 
 
 class TestMainFunctions(unittest.TestCase):
@@ -14,159 +14,100 @@ class TestMainFunctions(unittest.TestCase):
     
     def setUp(self):
         self.test_queue_file = "test_queue.yaml"
-        self.test_account = "test_account"
+        self.test_qa_file = "test_qa.csv"
+        self.test_cookie_path = "test_cookies.json"
     
-    @patch('bot.main.argparse.ArgumentParser.parse_args')
-    def test_parse_args_default(self, mock_parse_args):
-        """Test parse_args with default values"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=None,
-            account=None,
-            dry_run=False,
-            verbose=False
-        )
-        
-        args = parse_args()
-        
-        self.assertIsNone(args.queue_file)
-        self.assertIsNone(args.account)
-        self.assertFalse(args.dry_run)
-        self.assertFalse(args.verbose)
-    
-    @patch('bot.main.argparse.ArgumentParser.parse_args')
-    def test_parse_args_with_values(self, mock_parse_args):
-        """Test parse_args with custom values"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=self.test_queue_file,
-            account=self.test_account,
-            dry_run=True,
-            verbose=True
-        )
-        
-        args = parse_args()
-        
-        self.assertEqual(args.queue_file, self.test_queue_file)
-        self.assertEqual(args.account, self.test_account)
-        self.assertTrue(args.dry_run)
-        self.assertTrue(args.verbose)
-    
-    @patch('bot.main.setup_logging')
-    @patch('bot.main.load_dotenv')
-    @patch('bot.main.parse_args')
-    @patch('bot.main.run_scheduler')
-    def test_main_scheduler_mode(self, mock_run_scheduler, mock_parse_args, mock_load_dotenv, mock_setup_logging):
-        """Test main function in scheduler mode"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=None,
-            account=None,
-            dry_run=False,
-            verbose=False
-        )
-        
-        result = main()
-        
-        self.assertEqual(result, 0)
-        mock_setup_logging.assert_called_once()
-        mock_load_dotenv.assert_called_once()
-        mock_run_scheduler.assert_called_once()
-    
-    @patch('bot.main.setup_logging')
-    @patch('bot.main.load_dotenv')
-    @patch('bot.main.parse_args')
-    @patch('bot.main.post_to_twitter')
-    @patch('bot.main.yaml.safe_load')
-    @patch('builtins.open', new_callable=unittest.mock.mock_open)
-    def test_main_single_post_mode(self, mock_open, mock_yaml_load, mock_post_to_twitter, mock_parse_args, mock_load_dotenv, mock_setup_logging):
-        """Test main function in single post mode"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=self.test_queue_file,
-            account=self.test_account,
-            dry_run=False,
-            verbose=False
-        )
-        mock_yaml_load.return_value = {
-            'posts': [
-                {'text': 'Test post 1'},
-                {'text': 'Test post 2'}
-            ]
-        }
-        mock_post_to_twitter.return_value = {'success': True}
-        
-        result = main()
-        
-        self.assertEqual(result, 0)
-        mock_setup_logging.assert_called_once()
-        mock_load_dotenv.assert_called_once()
-        mock_open.assert_called_once_with(self.test_queue_file, 'r', encoding='utf-8')
-        mock_yaml_load.assert_called_once()
-        self.assertEqual(mock_post_to_twitter.call_count, 2)
-    
-    @patch('bot.main.setup_logging')
-    @patch('bot.main.load_dotenv')
-    @patch('bot.main.parse_args')
-    @patch('bot.main.post_to_twitter')
-    @patch('bot.main.yaml.safe_load')
-    @patch('builtins.open', new_callable=unittest.mock.mock_open)
-    def test_main_dry_run(self, mock_open, mock_yaml_load, mock_post_to_twitter, mock_parse_args, mock_load_dotenv, mock_setup_logging):
-        """Test main function in dry run mode"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file=self.test_queue_file,
-            account=self.test_account,
-            dry_run=True,
-            verbose=False
-        )
-        mock_yaml_load.return_value = {
-            'posts': [
-                {'text': 'Test post 1'}
-            ]
-        }
-        
-        result = main()
-        
-        self.assertEqual(result, 0)
-        mock_setup_logging.assert_called_once()
-        mock_load_dotenv.assert_called_once()
-        mock_open.assert_called_once_with(self.test_queue_file, 'r', encoding='utf-8')
-        mock_yaml_load.assert_called_once()
-        mock_post_to_twitter.assert_not_called()
-    
-    @patch('bot.main.setup_logging')
-    @patch('bot.main.load_dotenv')
-    @patch('bot.main.parse_args')
+    @patch('bot.main.create_driver')
+    @patch('bot.main.load_cookies')
+    @patch('bot.main.PostDeduplicator')
     @patch('bot.main.logger')
-    def test_main_file_not_found(self, mock_logger, mock_parse_args, mock_load_dotenv, mock_setup_logging):
-        """Test main function with file not found error"""
-        mock_parse_args.return_value = MagicMock(
-            queue_file="nonexistent.yaml",
-            account=self.test_account,
-            dry_run=False,
-            verbose=False
-        )
+    def test_process_queue_success(self, mock_logger, mock_deduplicator, mock_load_cookies, mock_create_driver):
+        """Test successful process_queue execution"""
+        mock_driver = MagicMock()
+        mock_create_driver.return_value = mock_driver
+        mock_load_cookies.return_value = True
         
-        with patch('builtins.open', side_effect=FileNotFoundError):
-            result = main()
+        result = process_queue(self.test_queue_file, self.test_qa_file)
+        
+        self.assertEqual(result, 0)
+        mock_create_driver.assert_called_once()
+        mock_load_cookies.assert_called_once_with(mock_driver, "niijima_cookies.json")
+        mock_driver.quit.assert_called_once()
+    
+    @patch('bot.main.create_driver')
+    @patch('bot.main.load_cookies')
+    @patch('bot.main.logger')
+    def test_process_queue_cookie_failure(self, mock_logger, mock_load_cookies, mock_create_driver):
+        """Test process_queue with cookie loading failure"""
+        mock_driver = MagicMock()
+        mock_create_driver.return_value = mock_driver
+        mock_load_cookies.return_value = False
+        
+        result = process_queue(self.test_queue_file, self.test_qa_file)
+        
+        self.assertEqual(result, 1)
+        mock_logger.error.assert_called_with("Failed to load cookies")
+        mock_driver.quit.assert_called_once()
+    
+    @patch('bot.main.create_driver')
+    @patch('bot.main.logger')
+    def test_process_queue_exception(self, mock_logger, mock_create_driver):
+        """Test process_queue with exception"""
+        mock_create_driver.side_effect = Exception("Test error")
+        
+        result = process_queue(self.test_queue_file, self.test_qa_file)
         
         self.assertEqual(result, 1)
         mock_logger.error.assert_called_once()
     
-    @patch('bot.main.setup_logging')
-    @patch('bot.main.load_dotenv')
-    @patch('bot.main.parse_args')
-    @patch('bot.main.logger')
-    def test_main_exception(self, mock_logger, mock_parse_args, mock_load_dotenv, mock_setup_logging):
-        """Test main function with unexpected exception"""
+    @patch('bot.main.create_driver')
+    @patch('bot.main.load_cookies')
+    @patch('bot.main.os.environ')
+    def test_process_queue_with_env_vars(self, mock_environ, mock_load_cookies, mock_create_driver):
+        """Test process_queue with environment variables"""
+        mock_driver = MagicMock()
+        mock_create_driver.return_value = mock_driver
+        mock_load_cookies.return_value = True
+        env_vars = {"TEST_VAR": "test_value"}
+        
+        result = process_queue(self.test_queue_file, self.test_qa_file, env_vars)
+        
+        self.assertEqual(result, 0)
+        mock_environ.__setitem__.assert_called_with("TEST_VAR", "test_value")
+    
+    @patch('bot.main.argparse.ArgumentParser.parse_args')
+    @patch('bot.main.process_queue')
+    @patch('bot.main.os.environ')
+    def test_main_with_args(self, mock_environ, mock_process_queue, mock_parse_args):
+        """Test main function with command line arguments"""
         mock_parse_args.return_value = MagicMock(
             queue_file=self.test_queue_file,
-            account=self.test_account,
-            dry_run=False,
-            verbose=False
+            qa_file=self.test_qa_file,
+            cookie_path=self.test_cookie_path
         )
+        mock_process_queue.return_value = 0
         
-        with patch('builtins.open', side_effect=Exception("Unexpected error")):
-            result = main()
+        result = main()
         
-        self.assertEqual(result, 1)
-        mock_logger.error.assert_called_once()
+        self.assertEqual(result, 0)
+        mock_environ.__setitem__.assert_called_with("COOKIE_PATH", self.test_cookie_path)
+        mock_process_queue.assert_called_once_with(self.test_queue_file, self.test_qa_file)
+    
+    @patch('bot.main.argparse.ArgumentParser.parse_args')
+    @patch('bot.main.process_queue')
+    def test_main_without_args(self, mock_process_queue, mock_parse_args):
+        """Test main function without command line arguments"""
+        mock_parse_args.return_value = MagicMock(
+            queue_file=None,
+            qa_file=None,
+            cookie_path=None
+        )
+        mock_process_queue.return_value = 0
+        
+        result = main()
+        
+        self.assertEqual(result, 0)
+        mock_process_queue.assert_called_once_with(None, None)
 
 
 if __name__ == '__main__':
