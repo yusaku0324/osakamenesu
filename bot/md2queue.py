@@ -19,78 +19,52 @@ def extract_items(md_content):
     job_items = []
     qa_items = []
     
-    sections = re.split(r'^## ', md_content, flags=re.MULTILINE)
+    # 求人情報の抽出
+    job_pattern = r'- \*\*(.*?)\*\* - (.*?)\n((?:  ✅.*?\n)+)(?:  動画: (.*?)\n)?'
+    job_matches = re.finditer(job_pattern, md_content, re.MULTILINE)
     
-    for section in sections[1:]:  # 最初の空セクションをスキップ
-        lines = section.strip().split('\n')
-        if not lines:
-            continue
-            
-        section_title = lines[0].strip()
+    for match in job_matches:
+        title = match.group(1)
+        date = match.group(2)
+        conditions_text = match.group(3)
+        video = match.group(4)
         
-        if "メンエス求人情報" in section_title:
-            current_item = None
-            for line in lines[1:]:
-                if line.startswith("- **"):
-                    if current_item:
-                        job_items.append(current_item)
-                    title_match = re.match(r'- \*\*(.*?)\*\* - (.*)', line)
-                    if title_match:
-                        current_item = {
-                            'type': 'job',
-                            'title': title_match.group(1),
-                            'date': title_match.group(2),
-                            'conditions': [],
-                            'video': None
-                        }
-                elif line.strip().startswith("✅") and current_item:
-                    current_item['conditions'].append(line.strip())
-                elif line.strip().startswith("動画:") and current_item:
-                    current_item['video'] = line.strip().replace("動画:", "").strip()
-            
-            if current_item:
-                job_items.append(current_item)
+        conditions = [line.strip() for line in conditions_text.split('\n') if line.strip()]
         
-        elif "Q&A" in section_title:
-            current_qa = None
-            for line in lines[1:]:
-                if line.startswith("- **Q："):
-                    if current_qa:
-                        qa_items.append(current_qa)
-                    
-                    q_match = re.match(r'- \*\*Q：(.*?)\*\*', line)
-                    if q_match:
-                        question = q_match.group(1)
-                        current_qa = {
-                            'type': 'qa',
-                            'question': question,
-                            'answer': ''
-                        }
-                        
-                        a_match = re.search(r'A：(.*?)$', line)
-                        if a_match:
-                            current_qa['answer'] = a_match.group(1)
-                elif line.strip().startswith("A：") and current_qa:
-                    current_qa['answer'] = line.strip().replace("A：", "").strip()
-                elif line.startswith("- ") and not line.startswith("- **Q："):
-                    qa_text = line.strip()[2:]  # "- " を削除
-                    
-                    qa_match = re.match(r'「(.+?)」\s*→\s*(.+?)$', qa_text)
-                    if qa_match:
-                        qa_items.append({
-                            'type': 'qa',
-                            'question': qa_match.group(1),
-                            'answer': qa_match.group(2)
-                        })
-                    else:
-                        qa_items.append({
-                            'type': 'qa',
-                            'question': qa_text,
-                            'answer': ''
-                        })
-            
-            if current_qa:
-                qa_items.append(current_qa)
+        job_items.append({
+            'type': 'job',
+            'title': title,
+            'date': date,
+            'conditions': conditions,
+            'video': video
+        })
+    
+    # Q&Aの抽出
+    qa_pattern1 = r'- \*\*Q：(.*?)\*\* A：(.*?)(?=\n|$)'
+    qa_matches1 = re.finditer(qa_pattern1, md_content)
+    
+    for match in qa_matches1:
+        question = match.group(1)
+        answer = match.group(2)
+        
+        qa_items.append({
+            'type': 'qa',
+            'question': question,
+            'answer': answer
+        })
+    
+    qa_pattern2 = r'- 「(.*?)」 → (.*?)(?=\n|$)'
+    qa_matches2 = re.finditer(qa_pattern2, md_content)
+    
+    for match in qa_matches2:
+        question = match.group(1)
+        answer = match.group(2)
+        
+        qa_items.append({
+            'type': 'qa',
+            'question': question,
+            'answer': answer
+        })
     
     return job_items + qa_items
 
