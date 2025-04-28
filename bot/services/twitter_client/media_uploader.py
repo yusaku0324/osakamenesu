@@ -76,7 +76,7 @@ def find_media_button(driver: WebDriver, timeout: int = 10) -> bool:
         MEDIA_BTN_SEL = "[data-testid='fileInput']"
         
         media_button = WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, MEDIA_BTN_SEL))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, MEDIA_BTN_SEL))
         )
         
         logger.info("メディアボタンを見つけました")

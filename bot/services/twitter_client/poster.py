@@ -33,7 +33,7 @@ def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
         
         try:
             WebDriverWait(driver, timeout).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='textbox']"))
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='textbox']"))
             )
             logger.info("投稿画面の読み込みが完了しました")
             return True

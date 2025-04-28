@@ -183,15 +183,16 @@ def click_tweet_button(driver: WebDriver, timeout: int = 15) -> bool:
         bool: 成功したかどうか
     """
     try:
-        button = find_tweet_button(driver, timeout)
-        if not button:
-            return False
+        from bot.utils.safe_click import safe_click_by_selector
+        
+        BTN_SEL = "[data-testid$='tweetButton'],[data-testid$='tweetButtonInline']"
         
         logger.info("ツイートボタンをクリックします...")
-        button.click()
-        time.sleep(5)
-        
-        return True
+        if safe_click_by_selector(driver, BTN_SEL, timeout=timeout, max_retries=5):
+            time.sleep(5)
+            return True
+        else:
+            return False
     except Exception as e:
         logger.error(f"ツイートボタンのクリック中にエラーが発生しました: {e}")
         return False
