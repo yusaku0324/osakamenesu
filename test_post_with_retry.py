@@ -75,14 +75,26 @@ def test_post_with_retry(max_retries=3):
     
     for attempt in range(max_retries):
         try:
-            driver = create_driver(headless=True)
+            driver = create_driver(headless=False)
             
             debug_dir = os.path.join(os.path.dirname(__file__), "debug")
             os.makedirs(debug_dir, exist_ok=True)
             
+            driver.get("https://x.com/home")
+            time.sleep(3)
+            
             cookie_path = os.path.join(os.path.dirname(__file__), "bot", "niijima_cookies.json")
             if not load_cookies(driver, cookie_path):
                 logger.warning("Failed to load cookies, but continuing with test")
+            
+            driver.get("https://x.com/home")
+            time.sleep(5)
+            
+            logger.info("Checking authentication status...")
+            if "login" in driver.current_url.lower():
+                logger.warning("Not authenticated, on login page")
+            else:
+                logger.info("Successfully authenticated")
                 
             debug_html_path = os.path.join(debug_dir, f"page_before_compose_{attempt}.html")
             with open(debug_html_path, 'w', encoding='utf-8') as f:
