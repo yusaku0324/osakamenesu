@@ -1,5 +1,5 @@
 """
-Test script to post a single message using niijima account
+Test script to post multiple videos using niijima account
 """
 import os
 import sys
@@ -19,22 +19,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    """Main function to post a test message"""
+    """Main function to post multiple videos"""
     try:
+        video_dir = os.path.join(os.path.dirname(__file__), "bot", "videos")
+        os.makedirs(video_dir, exist_ok=True)
+        
+        video_files = []
+        for i in range(1, 5):
+            video_path = os.path.join(video_dir, f"qa_video_{i}.mp4")
+            if os.path.exists(video_path):
+                video_files.append(video_path)
+        
+        if not video_files:
+            logger.error("No video files found in bot/videos directory")
+            return 1
+        
         test_message = f"""
-🌟 メンエス出稼ぎ求人 🌟
+🎥 Q&A動画シリーズ 🎥
 
-【テスト投稿】
-東京・大阪で高収入メンズエステ求人募集中！
-日給3万円以上保証 💰
-未経験者大歓迎 ✨
+メンズエステ求人に関するよくある質問にお答えします！
+全4本の動画をまとめて投稿します。
 
-詳細はDMまで 📩
 
 投稿時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
         
-        logger.info("Starting test post...")
+        logger.info(f"Starting test post with {len(video_files)} videos...")
         
         driver = create_driver(headless=True)
         
@@ -44,14 +54,14 @@ def main():
             driver.quit()
             return 1
         
-        result = post_to_twitter(driver, test_message)
+        result = post_to_twitter(driver, test_message, media_files=video_files)
         
         if result:
-            logger.info(f"Successfully posted test message: {result}")
+            logger.info(f"Successfully posted multiple videos: {result}")
             driver.quit()
             return 0
         else:
-            logger.error("Failed to post test message")
+            logger.error("Failed to post multiple videos")
             driver.quit()
             return 1
     
