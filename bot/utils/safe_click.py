@@ -64,64 +64,22 @@ def safe_click_by_selector(driver: WebDriver, selector: str, by: By = By.CSS_SEL
     """
     for attempt in range(max_retries):
         try:
-            elements = driver.find_elements(by, selector)
-            if not elements:
-                logger.warning(f"No elements found matching selector: {selector}")
-                if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    logger.info(f"Waiting {wait_time} seconds before retry...")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    logger.error(f"No elements found matching selector after {max_retries} attempts")
-                    return False
+            element = WebDriverWait(driver, timeout).until(
+                EC.element_to_be_clickable((by, selector))
+            )
             
-            try:
-                element = WebDriverWait(driver, timeout).until(
-                    EC.element_to_be_clickable((by, selector))
-                )
-                element.click()
-                logger.info(f"Successfully clicked element by selector on attempt {attempt + 1} (approach 1)")
-                return True
-            except Exception as e1:
-                logger.warning(f"Click approach 1 failed: {e1}")
-                
-                try:
-                    logger.info("Trying JavaScript click...")
-                    element = elements[0]
-                    driver.execute_script("arguments[0].click();", element)
-                    logger.info(f"Successfully clicked element by JavaScript on attempt {attempt + 1} (approach 2)")
-                    return True
-                except Exception as e2:
-                    logger.warning(f"Click approach 2 failed: {e2}")
-                    
-                    try:
-                        logger.info("Trying Actions chain click...")
-                        from selenium.webdriver.common.action_chains import ActionChains
-                        element = elements[0]
-                        actions = ActionChains(driver)
-                        actions.move_to_element(element).click().perform()
-                        logger.info(f"Successfully clicked element by Actions chain on attempt {attempt + 1} (approach 3)")
-                        return True
-                    except Exception as e3:
-                        logger.warning(f"Click approach 3 failed: {e3}")
-                        
-                        if attempt < max_retries - 1:
-                            wait_time = 2 ** attempt
-                            logger.info(f"Waiting {wait_time} seconds before retry...")
-                            time.sleep(wait_time)
-                        else:
-                            logger.error(f"Failed to click element by selector after {max_retries} attempts and 3 approaches")
-                            return False
-        
+            element.click()
+            logger.info(f"Successfully clicked element with selector {selector} on attempt {attempt + 1}")
+            return True
+            
         except Exception as e:
-            logger.warning(f"Click attempt {attempt + 1} failed: {e}")
+            logger.warning(f"Click attempt {attempt + 1} for selector {selector} failed: {e}")
             if attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 logger.info(f"Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             else:
-                logger.error(f"Failed to click element by selector after {max_retries} attempts")
+                logger.error(f"Failed to click element with selector {selector} after {max_retries} attempts")
                 return False
     
     return False

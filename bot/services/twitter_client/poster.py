@@ -30,106 +30,20 @@ def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
     try:
         logger.info("投稿画面に移動します...")
         driver.get("https://x.com/home")
-        
-        logger.info("ページの読み込みを待機しています...")
-        try:
-            WebDriverWait(driver, timeout).until(
-                lambda d: d.execute_script("return document.readyState") == "complete"
-            )
-            logger.info("ページの読み込みが完了しました")
-        except Exception as e:
-            logger.warning(f"ページの読み込み待機中にエラーが発生しました: {e}")
-        
-        time.sleep(5)
-        
-        try:
-            profile_link = driver.find_element(By.CSS_SELECTOR, "a[data-testid='AppTabBar_Profile_Link']")
-            logger.info("認証状態を確認: プロフィールリンクが見つかりました")
-        except Exception:
-            logger.warning("認証状態を確認: プロフィールリンクが見つかりません。認証されていない可能性があります")
-        
-        COMPOSE_SELECTORS = [
-            "[data-testid='SideNav_NewTweet_Button']",
-            "[data-testid='FloatingActionButton_Tweet_Button']",
-            "[aria-label='Tweet']",
-            "[aria-label='ツイートする']",
-            "[aria-label='投稿する']",
-            "[aria-label='Post']",
-            "a[href='/compose/tweet']",
-            "div[role='button'][data-testid*='tweet']",
-            "div[role='button'][data-testid*='Tweet']",
-            "div[data-testid*='tweet']",
-            "div[data-testid*='Tweet']",
-            "a[data-testid*='tweet']",
-            "a[data-testid*='Tweet']",
-            "div[role='button'][aria-label*='Tweet']",
-            "div[role='button'][aria-label*='ツイート']",
-            "div[role='button'][aria-label*='投稿']"
-        ]
-        
-        from bot.utils.safe_click import safe_click_by_selector
-        
-        for selector in COMPOSE_SELECTORS:
-            logger.info(f"コンポーズボタンのセレクタを確認しています: {selector}")
-            try:
-                try:
-                    element = WebDriverWait(driver, timeout/len(COMPOSE_SELECTORS)).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                    )
-                    logger.info(f"セレクタ {selector} に一致するクリック可能な要素が見つかりました")
-                    
-                    if safe_click_by_selector(driver, selector, timeout=timeout, max_retries=5):
-                        logger.info(f"コンポーズボタンをクリックしました: {selector}")
-                        
-                        # 投稿テキストボックスが表示されるのを待つ
-                        try:
-                            WebDriverWait(driver, timeout).until(
-                                EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='textbox']"))
-                            )
-                            logger.info("投稿画面の読み込みが完了しました")
-                            return True
-                        except Exception as e:
-                            logger.warning(f"テキストボックスの待機中にエラーが発生しました: {e}")
-                            continue
-                except Exception as e:
-                    logger.info(f"セレクタ {selector} に一致するクリック可能な要素が見つかりませんでした: {e}")
-                    continue
-            except Exception as e:
-                logger.warning(f"セレクタ {selector} の確認中にエラーが発生しました: {e}")
-                continue
-        
-        logger.info("直接URLに移動する方法を試します...")
+        wait = WebDriverWait(driver, timeout)
+        wait.until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
         driver.get("https://x.com/compose/tweet")
-        time.sleep(3)
-        
-        try:
-            WebDriverWait(driver, timeout).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='textbox']"))
+        wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "[data-testid='tweetButton']")
             )
-            logger.info("投稿画面の読み込みが完了しました")
-            return True
-        except Exception as e:
-            logger.error(f"投稿画面の読み込み待機中にエラーが発生しました: {e}")
-            
-            try:
-                logger.info("JavaScriptを使用して新しいツイート画面を開く方法を試します...")
-                driver.execute_script("window.location.href = 'https://x.com/compose/tweet';")
-                time.sleep(3)
-                
-                WebDriverWait(driver, timeout).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div[role='textbox']"))
-                )
-                logger.info("JavaScriptを使用した方法で投稿画面の読み込みが完了しました")
-                return True
-            except Exception as e:
-                logger.error(f"JavaScriptを使用した方法でも失敗しました: {e}")
-                return False
-    
+        )
+        return True  # 成功時のみ
     except Exception as e:
-        logger.error(f"投稿画面への移動中にエラーが発生しました: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return False
+        logger.warning(f"ページの読み込み待機中にエラーが発生しました: {e}")
+        return False  # 失敗時は False
 
 def wait_for_tweet_url(driver: WebDriver, timeout: int = 20) -> Optional[str]:
     """

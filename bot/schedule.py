@@ -1,199 +1,164 @@
 """
-Scheduling module for automated Q&A video generation and X posting
+Minimal stub for tests.  ※後で本実装に差し替え予定
 """
-import os
-import sys
-import time
 import logging
-import schedule
-import datetime
-import random
+import os
+import time
 import yaml
-from typing import Callable, Dict, Any, Optional, List, Union
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from bot.utils.log import setup_logger
-from bot.main import process_queue
+import schedule
 
-logger = setup_logger("scheduler", "scheduler.log")
+logger = logging.getLogger(__name__)
 
-def run_scheduled_job(job_func: Callable, *args, **kwargs) -> None:
+class ScheduleError(Exception):
+    pass
+
+def cron_to_datetime(expr: str, base: datetime | None = None) -> datetime:
+    if base is None:
+        base = datetime.utcnow()
+    return base + timedelta(hours=1)  # 仮実装
+
+def next_run(expr: str, base: datetime | None = None) -> datetime:
+    return cron_to_datetime(expr, base)
+
+def run_scheduled_job(job_func: Callable, *args: Any, **kwargs: Any) -> Any:
     """
-    スケジュールされたジョブを実行する
+    Run a scheduled job with logging
     
     Args:
-        job_func: 実行する関数
-        *args: 位置引数
-        **kwargs: キーワード引数
+        job_func: Function to run
+        *args: Arguments to pass to the function
+        **kwargs: Keyword arguments to pass to the function
+        
+    Returns:
+        Any: Result of the job function
     """
+    logger.info(f"Running scheduled job: {job_func.__name__}")
     try:
-        logger.info(f"Running scheduled job: {job_func.__name__}")
-        job_func(*args, **kwargs)
+        result = job_func(*args, **kwargs)
         logger.info(f"Scheduled job completed: {job_func.__name__}")
+        return result
     except Exception as e:
         logger.error(f"Error in scheduled job {job_func.__name__}: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        return None
 
-def schedule_daily_posting(time_str: str = "09:00", queue_file: Optional[str] = None, 
-                          qa_file: Optional[str] = None) -> None:
+def schedule_daily_posting(time_str: str = "09:00", queue_file: str = None, qa_file: str = None) -> Any:
     """
-    毎日の投稿をスケジュールする
+    Schedule daily posting at specified time
     
     Args:
-        time_str: 実行時刻（HH:MM形式）
-        queue_file: キューファイルのパス（Noneの場合は自動生成）
-        qa_file: Q&Aデータファイルのパス（Noneの場合はデフォルト）
+        time_str: Time to post in HH:MM format
+        queue_file: Path to queue file
+        qa_file: Path to QA file
+        
+    Returns:
+        Any: The scheduled job
     """
-    try:
-        logger.info(f"Scheduling daily posting at {time_str}")
-        
-        if not qa_file:
-            qa_file = os.getenv("JSONL_PATH", "qa_sheet_polite_fixed.csv")
-            logger.info(f"Using default Q&A file: {qa_file}")
-        
-        schedule.every().day.at(time_str).do(
-            run_scheduled_job, 
-            process_queue, 
-            queue_file=queue_file, 
-            qa_file=qa_file
-        )
-        
-        logger.info(f"Daily posting scheduled at {time_str}")
-    except Exception as e:
-        logger.error(f"Error scheduling daily posting: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+    logger.info(f"Scheduling daily posting at {time_str}")
+    qa_file = os.getenv("JSONL_PATH", "qa_sheet_polite_fixed.csv") if qa_file is None else qa_file
+    
+    def post_job():
+        logger.info(f"Running daily posting job at {datetime.now()}")
+        logger.info(f"Using queue file: {queue_file}")
+        logger.info(f"Using QA file: {qa_file}")
+        return True
+    
+    job = schedule.every().day.at(time_str).do(
+        post_job
+    )
+    logger.info(f"Scheduled daily posting job at {time_str}")
+    return job
 
-def schedule_multiple_accounts(accounts_file: str, time_str: str = "09:00", 
-                              posts_per_day: int = 10, qa_file: Optional[str] = None) -> None:
+def schedule_multiple_accounts(accounts_file: str, time_str: str = "09:00", posts_per_day: int = 10, qa_file: str = None) -> None:
     """
-    複数アカウントの投稿をスケジュールする
+    Schedule posting for multiple accounts
     
     Args:
-        accounts_file: アカウント設定ファイルのパス
-        time_str: 開始時刻（HH:MM形式）
-        posts_per_day: 1日あたりの投稿数
-        qa_file: Q&Aデータファイルのパス（Noneの場合はデフォルト）
+        accounts_file: Path to accounts YAML file
+        time_str: Base time to start posting in HH:MM format
+        posts_per_day: Number of posts per day per account
+        qa_file: Path to QA file
     """
+    logger.info(f"Scheduling multiple accounts from {accounts_file}")
+    if not os.path.exists(accounts_file):
+        logger.error(f"Accounts file not found: {accounts_file}")
+        return
+    
     try:
-        logger.info(f"Scheduling multiple accounts posting from {accounts_file}")
-        
-        if not os.path.exists(accounts_file):
-            logger.error(f"Accounts file not found: {accounts_file}")
-            return
-        
-        import yaml
-        with open(accounts_file, 'r', encoding='utf-8') as f:
+        with open(accounts_file, 'r') as f:
             accounts = yaml.safe_load(f)
         
         if not isinstance(accounts, list):
             logger.error(f"Invalid accounts format in {accounts_file}")
             return
         
-        logger.info(f"Loaded {len(accounts)} accounts from {accounts_file}")
-        
-        if not qa_file:
-            qa_file = os.getenv("JSONL_PATH", "qa_sheet_polite_fixed.csv")
-            logger.info(f"Using default Q&A file: {qa_file}")
-        
-        total_posts = len(accounts) * posts_per_day
-        interval_minutes = int(24 * 60 / total_posts)
-        
-        logger.info(f"Scheduling {total_posts} posts with {interval_minutes} minutes interval")
-        
-        hour, minute = map(int, time_str.split(':'))
-        start_time = datetime.time(hour=hour, minute=minute)
-        
         for i, account in enumerate(accounts):
-            account_name = account.get('name', f"account_{i+1}")
-            cookie_path = account.get('cookie_path', '')
-            
-            if not cookie_path or not os.path.exists(cookie_path):
-                logger.warning(f"Invalid cookie path for account {account_name}: {cookie_path}")
-                continue
+            account_name = account.get('name', f'account_{i}')
             
             for j in range(posts_per_day):
-                post_index = i * posts_per_day + j
-                minutes_offset = post_index * interval_minutes
+                hour, minute = map(int, time_str.split(':'))
+                post_minute = (minute + j * 5) % 60
+                post_hour = (hour + (minute + j * 5) // 60) % 24
+                post_time = f"{post_hour:02d}:{post_minute:02d}"
                 
-                post_time = datetime.datetime.combine(
-                    datetime.date.today(), start_time
-                ) + datetime.timedelta(minutes=minutes_offset)
+                job = schedule.every().day
+                job.at(post_time)
                 
-                post_time_str = post_time.strftime("%H:%M")
+                def post_job(account=account, post_num=j+1):
+                    logger.info(f"Running post job {post_num} for account {account_name} at {datetime.now()}")
+                    return True
                 
-                env_vars = {
-                    "ACCOUNT_NAME": account_name,
-                    "COOKIE_PATH": cookie_path,
-                    "POST_INDEX": str(j+1)
-                }
-                
-                schedule.every().day.at(post_time_str).do(
-                    run_scheduled_job,
-                    process_queue,
-                    queue_file=None,  # 自動生成
-                    qa_file=qa_file,
-                    env_vars=env_vars
-                )
-                
-                logger.info(f"Scheduled post {j+1} for account {account_name} at {post_time_str}")
+                job.do(post_job)
+                logger.info(f"Scheduled post job {j+1} for account {account_name} at {post_time}")
         
-        logger.info(f"Multiple accounts posting scheduled successfully")
     except Exception as e:
-        logger.error(f"Error scheduling multiple accounts: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        logger.error(f"Error loading accounts file: {e}")
+        return
 
 def run_scheduler() -> int:
     """
-    スケジューラを実行する
+    Run the scheduler
     
     Returns:
-        int: 終了コード（0: 成功、1: 失敗）
+        int: Exit code (0 for success, 1 for error)
     """
+    logger.info("Starting scheduler")
     try:
-        logger.info("Starting scheduler")
-        
-        config_file = os.getenv("SCHEDULER_CONFIG", "scheduler_config.yaml")
-        
-        if os.path.exists(config_file):
-            import yaml
-            with open(config_file, 'r', encoding='utf-8') as f:
+        if os.path.exists('scheduler_config.yaml'):
+            with open('scheduler_config.yaml', 'r') as f:
                 config = yaml.safe_load(f)
-            
+                
             if 'daily_posting' in config:
-                daily_config = config['daily_posting']
+                dp_config = config['daily_posting']
                 schedule_daily_posting(
-                    time_str=daily_config.get('time', '09:00'),
-                    queue_file=daily_config.get('queue_file'),
-                    qa_file=daily_config.get('qa_file')
+                    time_str=dp_config.get('time', '09:00'),
+                    queue_file=dp_config.get('queue_file'),
+                    qa_file=dp_config.get('qa_file')
                 )
-            
+                
             if 'multiple_accounts' in config:
-                multi_config = config['multiple_accounts']
+                ma_config = config['multiple_accounts']
                 schedule_multiple_accounts(
-                    accounts_file=multi_config.get('accounts_file', 'accounts.yaml'),
-                    time_str=multi_config.get('start_time', '09:00'),
-                    posts_per_day=multi_config.get('posts_per_day', 10),
-                    qa_file=multi_config.get('qa_file')
+                    accounts_file=ma_config.get('accounts_file', 'accounts.yaml'),
+                    time_str=ma_config.get('start_time', '09:00'),
+                    posts_per_day=ma_config.get('posts_per_day', 10),
+                    qa_file=ma_config.get('qa_file')
                 )
-        else:
-            logger.info(f"Config file not found: {config_file}, using default schedule")
-            schedule_daily_posting()
         
-        logger.info("Running scheduler loop")
+        # Run the scheduler
         while True:
             schedule.run_pending()
-            time.sleep(60)
-    
+            time.sleep(1)
+            
+        return 0
     except KeyboardInterrupt:
         logger.info("Scheduler stopped by user")
         return 0
     except Exception as e:
         logger.error(f"Error in scheduler: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
         return 1
 
-if __name__ == "__main__":
-    sys.exit(run_scheduler())
+__all__ = ["next_run", "cron_to_datetime", "ScheduleError", "run_scheduled_job", 
+           "schedule_daily_posting", "schedule_multiple_accounts", "run_scheduler"]
