@@ -1,4 +1,0 @@
-file '/home/ubuntu/repos/kakeru/bot/videos/question_1.mp4'
-file '/home/ubuntu/repos/kakeru/bot/videos/question_2.mp4'
-file '/home/ubuntu/repos/kakeru/bot/videos/question_3.mp4'
-file '/home/ubuntu/repos/kakeru/bot/videos/question_4.mp4'

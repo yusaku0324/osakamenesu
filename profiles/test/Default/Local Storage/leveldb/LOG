@@ -1,5 +1,0 @@
-2025/04/21-15:39:52.367 df5a17 Reusing MANIFEST /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/MANIFEST-000001
-2025/04/21-15:39:52.369 df5a17 Recovering log #7
-2025/04/21-15:39:52.369 df5a17 (ignoring error) /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/000007.log: dropping 7386 bytes; Corruption: checksum mismatch
-2025/04/21-15:39:52.369 df5a17 (ignoring error) /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/000007.log: dropping 7354 bytes; Corruption: missing start of fragmented record(2)
-2025/04/21-15:39:52.369 df5a17 Reusing old log /Users/yusaku/kakeru/profiles/test/Default/Local Storage/leveldb/000007.log 
