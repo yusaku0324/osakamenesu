@@ -75,17 +75,43 @@ def test_post_with_retry(max_retries=3):
     
     for attempt in range(max_retries):
         try:
-            driver = create_driver(headless=True)
+            driver = create_driver(headless=False)
+            
+            debug_dir = os.path.join(os.path.dirname(__file__), "debug")
+            os.makedirs(debug_dir, exist_ok=True)
             
             cookie_path = os.path.join(os.path.dirname(__file__), "bot", "niijima_cookies.json")
             if not load_cookies(driver, cookie_path):
                 logger.warning("Failed to load cookies, but continuing with test")
+                
+            debug_html_path = os.path.join(debug_dir, f"page_before_compose_{attempt}.html")
+            with open(debug_html_path, 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            logger.info(f"Saved page source to {debug_html_path}")
+            
+            debug_screenshot_path = os.path.join(debug_dir, f"screenshot_before_compose_{attempt}.png")
+            driver.save_screenshot(debug_screenshot_path)
+            logger.info(f"Saved screenshot to {debug_screenshot_path}")
             
             logger.info("Navigating to compose page using improved navigate_to_compose function")
             
             from bot.services.twitter_client.poster import navigate_to_compose
             
+            debug_html_before_path = os.path.join(debug_dir, f"page_before_navigate_{attempt}.html")
+            with open(debug_html_before_path, 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            logger.info(f"Saved page source before navigation to {debug_html_before_path}")
+            
             compose_page_loaded = navigate_to_compose(driver, timeout=15)
+            
+            debug_html_after_path = os.path.join(debug_dir, f"page_after_navigate_{attempt}.html")
+            with open(debug_html_after_path, 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            logger.info(f"Saved page source after navigation to {debug_html_after_path}")
+            
+            debug_screenshot_after_path = os.path.join(debug_dir, f"screenshot_after_navigate_{attempt}.png")
+            driver.save_screenshot(debug_screenshot_after_path)
+            logger.info(f"Saved screenshot after navigation to {debug_screenshot_after_path}")
             
             if compose_page_loaded:
                 logger.info("Successfully navigated to compose page")
