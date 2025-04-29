@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.remote.webdriver import WebDåriver
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from bot.services.twitter_client.composer import type_tweet_text, click_tweet_button
 from bot.services.twitter_client.media_uploader import prepare_media, upload_media, upload_multiple_media
