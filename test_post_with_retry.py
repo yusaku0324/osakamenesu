@@ -75,7 +75,7 @@ def test_post_with_retry(max_retries=3):
     
     for attempt in range(max_retries):
         try:
-            driver = create_driver(headless=False)
+            driver = create_driver(headless=True)
             
             debug_dir = os.path.join(os.path.dirname(__file__), "debug")
             os.makedirs(debug_dir, exist_ok=True)
