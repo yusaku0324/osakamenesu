@@ -7,7 +7,7 @@ Kakeruは、X（旧Twitter）に自動で投稿するためのPythonツールで
 ## 機能
 
 - OpenAI APIを使用した募集ツイートの自動生成
-- X（旧Twitter）への自動投稿
+- X（旧Twitter）への自動投稿（最大4本まで動画添付可／合計4添付）
 - GitHub Actionsによる定期実行（毎日09:30 JST）
 - 手動実行オプション
 
@@ -30,6 +30,26 @@ pip install -r requirements.txt
 # .envファイルを作成
 cp .env.example .env
 # .envファイルを編集してAPIキーを設定
+```
+
+## 開発環境セットアップ
+
+### リポジトリクリーンアップ手順
+
+開発環境をクリーンに保つために、以下の手順を実行してください：
+
+```bash
+# .gitignoreに無視すべきファイルパターンが含まれていることを確認
+cat .gitignore
+
+# 追跡済みだけど.gitignoreで無視対象になったファイルをインデックスから外す
+git ls-files -i -X .gitignore -z | xargs -0 git rm --cached
+
+# 状態確認
+git status -s
+
+# 変更をコミット
+git commit -m "chore: リポジトリクリーンアップ"
 ```
 
 ## 使用方法
@@ -62,6 +82,14 @@ pytest --cov=generate_recruit_posts
 
 - 毎日09:30 JST（00:30 UTC）に自動実行
 - 手動トリガーによる実行も可能
+
+## 変更履歴
+
+### v0.4.0
+- X投稿機能の拡張：最大4本まで動画添付可能（以前は2本まで）
+- 合計添付ファイル数も4件まで対応
+- リポジトリクリーンアップ手順の追加
+- テストカバレッジの向上（80%以上）
 
 ## ライセンス
 
