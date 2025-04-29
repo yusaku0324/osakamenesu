@@ -72,9 +72,11 @@ def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
         for selector in COMPOSE_SELECTORS:
             logger.info(f"コンポーズボタンのセレクタを確認しています: {selector}")
             try:
-                elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                if elements:
-                    logger.info(f"セレクタ {selector} に一致する要素が {len(elements)} 個見つかりました")
+                try:
+                    element = WebDriverWait(driver, timeout/len(COMPOSE_SELECTORS)).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                    )
+                    logger.info(f"セレクタ {selector} に一致するクリック可能な要素が見つかりました")
                     
                     if safe_click_by_selector(driver, selector, timeout=timeout, max_retries=5):
                         logger.info(f"コンポーズボタンをクリックしました: {selector}")
@@ -89,8 +91,9 @@ def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
                         except Exception as e:
                             logger.warning(f"テキストボックスの待機中にエラーが発生しました: {e}")
                             continue
-                else:
-                    logger.info(f"セレクタ {selector} に一致する要素が見つかりませんでした")
+                except Exception as e:
+                    logger.info(f"セレクタ {selector} に一致するクリック可能な要素が見つかりませんでした: {e}")
+                    continue
             except Exception as e:
                 logger.warning(f"セレクタ {selector} の確認中にエラーが発生しました: {e}")
                 continue
