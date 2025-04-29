@@ -83,6 +83,52 @@ pytest --cov=generate_recruit_posts
 - 毎日09:30 JST（00:30 UTC）に自動実行
 - 手動トリガーによる実行も可能
 
+## Docker での使い方
+
+[![Docker Pulls](https://img.shields.io/docker/pulls/ghcr.io/yusaku0324/kakeru)](https://github.com/yusaku0324/kakeru/pkgs/container/kakeru)
+
+### Docker イメージの取得
+
+```bash
+docker pull ghcr.io/yusaku0324/kakeru:latest
+```
+
+### 単体実行
+
+```bash
+docker run -v $(pwd)/.env:/app/.env \
+  -v $(pwd)/profiles:/app/profiles \
+  -v $(pwd)/queue:/app/queue \
+  -v $(pwd)/debug:/app/debug \
+  ghcr.io/yusaku0324/kakeru:latest
+```
+
+### Docker Compose での実行
+
+`docker-compose.yml` ファイルを作成：
+
+```yaml
+version: '3.8'
+
+services:
+  kakeru:
+    image: ghcr.io/yusaku0324/kakeru:latest
+    volumes:
+      - ./.env:/app/.env
+      - ./profiles:/app/profiles
+      - ./queue:/app/queue
+      - ./debug:/app/debug
+    environment:
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
+```
+
+実行：
+
+```bash
+docker-compose up -d
+```
+
 ## 変更履歴
 
 ### v0.4.0
@@ -90,6 +136,7 @@ pytest --cov=generate_recruit_posts
 - 合計添付ファイル数も4件まで対応
 - リポジトリクリーンアップ手順の追加
 - テストカバレッジの向上（80%以上）
+- Dockerコンテナ化とGitHub Container Registryへの自動デプロイ
 
 ## ライセンス
 
