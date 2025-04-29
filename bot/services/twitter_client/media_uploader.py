@@ -150,7 +150,7 @@ def upload_multiple_media(driver: WebDriver, media_paths: List[str], timeout: in
         
         try:
             file_input = WebDriverWait(driver, timeout).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='fileInput']"))
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "[data-testid='fileInput']"))
             )
         except Exception as e:
             logger.error(f"メディアアップロードボタンが見つかりません: {e}")
@@ -173,7 +173,7 @@ def upload_multiple_media(driver: WebDriver, media_paths: List[str], timeout: in
         try:
             for i in range(len(file_paths)):
                 WebDriverWait(driver, timeout).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, f"[data-testid='attachments'] > div:nth-child({i+1})"))
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, f"[data-testid='attachments'] > div:nth-child({i+1})"))
                 )
                 logger.info(f"メディアファイル {i+1}/{len(file_paths)} のアップロードが完了しました")
         except Exception as e:
