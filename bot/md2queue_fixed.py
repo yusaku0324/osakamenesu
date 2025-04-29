@@ -1,5 +1,5 @@
 """
-MarkdownファイルをX投稿用のキューに変換するスクリプト
+MarkdownファイルをX投稿用のキューに変換するスクリプト（修正版）
 """
 import json
 import re
@@ -19,52 +19,69 @@ def extract_items(md_content):
     job_items = []
     qa_items = []
     
-    # 求人情報の抽出
-    job_pattern = r'- \*\*(.*?)\*\* - (.*?)\n((?:  ✅.*?\n)+)(?:  動画: (.*?)\n)?'
-    job_matches = re.finditer(job_pattern, md_content, re.MULTILINE)
+    lines = md_content.strip().split('\n')
+    current_job = None
     
-    for match in job_matches:
-        title = match.group(1)
-        date = match.group(2)
-        conditions_text = match.group(3)
-        video = match.group(4)
+    for line in lines:
+        if line.startswith("- **") and not line.startswith("- **Q："):
+            title_match = re.match(r'- \*\*(.*?)\*\* - (.*)', line)
+            if title_match:
+                if current_job:
+                    job_items.append(current_job)
+                
+                current_job = {
+                    'type': 'job',
+                    'title': title_match.group(1),
+                    'date': title_match.group(2),
+                    'conditions': [],
+                    'video': None
+                }
         
-        conditions = [line.strip() for line in conditions_text.split('\n') if line.strip()]
+        elif line.strip().startswith("✅") and current_job:
+            current_job['conditions'].append(line.strip())
         
-        job_items.append({
-            'type': 'job',
-            'title': title,
-            'date': date,
-            'conditions': conditions,
-            'video': video
-        })
-    
-    # Q&Aの抽出
-    qa_pattern1 = r'- \*\*Q：(.*?)\*\* A：(.*?)(?=\n|$)'
-    qa_matches1 = re.finditer(qa_pattern1, md_content)
-    
-    for match in qa_matches1:
-        question = match.group(1)
-        answer = match.group(2)
+        elif line.strip().startswith("動画:") and current_job:
+            current_job['video'] = line.strip().replace("動画:", "").strip()
         
-        qa_items.append({
-            'type': 'qa',
-            'question': question,
-            'answer': answer
-        })
-    
-    qa_pattern2 = r'- 「(.*?)」 → (.*?)(?=\n|$)'
-    qa_matches2 = re.finditer(qa_pattern2, md_content)
-    
-    for match in qa_matches2:
-        question = match.group(1)
-        answer = match.group(2)
+        elif line.startswith("- **Q："):
+            if current_job:
+                job_items.append(current_job)
+                current_job = None
+                
+            q_match = re.match(r'- \*\*Q：(.*?)\*\*', line)
+            if q_match:
+                question = q_match.group(1)
+                qa_item = {
+                    'type': 'qa',
+                    'question': question,
+                    'answer': ''
+                }
+                
+                a_match = re.search(r'A：(.*?)$', line)
+                if a_match:
+                    qa_item['answer'] = a_match.group(1)
+                
+                qa_items.append(qa_item)
         
-        qa_items.append({
-            'type': 'qa',
-            'question': question,
-            'answer': answer
-        })
+        elif line.startswith("- 「"):
+            if current_job:
+                job_items.append(current_job)
+                current_job = None
+                
+            qa_match = re.match(r'- 「(.+?)」\s*→\s*(.+?)$', line)
+            if qa_match:
+                qa_items.append({
+                    'type': 'qa',
+                    'question': qa_match.group(1),
+                    'answer': qa_match.group(2)
+                })
+        
+        elif not line.strip() and current_job:
+            job_items.append(current_job)
+            current_job = None
+    
+    if current_job:
+        job_items.append(current_job)
     
     return job_items + qa_items
 
