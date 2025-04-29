@@ -46,23 +46,24 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# local artefacts
+# Local artifacts
 profiles/
 queue/
+debug/
+videos/
 *.png
 *.json
 *.yaml.bak
-
-# local artefacts
-profiles/
-queue/
-*.png
-*.json
-*.yaml.bak
-
-# Additional patterns
-__pycache__/
 *.pyc
 *.db
-videos/
-debug/
+*.log
+*.html
+
+# Browser profiles
+profiles/*/
+profiles/niijima/
+profiles/test/
+
+# Temporary files
+tmp/
+temp/
