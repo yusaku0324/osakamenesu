@@ -2,6 +2,7 @@
 Tests for twitter_client/media_uploader.py
 """
 import unittest
+import pytest
 from unittest.mock import patch, MagicMock, call
 import os
 import tempfile
@@ -17,7 +18,10 @@ from bot.services.twitter_client.media_uploader import (
     find_media_button,
     upload_media,
     upload_multiple_media,
-    prepare_media
+    prepare_media,
+    VIDEO_EXTS,
+    MAX_TOTAL,
+    MAX_VIDEOS
 )
 
 
@@ -222,6 +226,32 @@ class TestMediaUploaderFunctions(unittest.TestCase):
         result = prepare_media("invalid_format")
         
         self.assertIsNone(result)
+    
+    @patch("bot.services.twitter_client.media_uploader.upload_media")
+    @patch("time.sleep")
+    def test_upload_multiple_media_four_videos_success(self, mock_sleep, mock_upload):
+        """4 本動画は許可される"""
+        mock_upload.return_value = True
+        media_paths = [f"video{i}.mp4" for i in range(4)]
+        result = upload_multiple_media(MagicMock(), media_paths)
+        assert result is True
+        assert mock_upload.call_count == 4
+    
+    @patch("bot.services.twitter_client.media_uploader.upload_media")
+    def test_upload_multiple_media_total_limit_exceeded(self, mock_upload):
+        """添付 5 件なら False"""
+        media_paths = [f"img{i}.png" for i in range(5)]
+        result = upload_multiple_media(MagicMock(), media_paths)
+        assert result is False
+        mock_upload.assert_not_called()
+    
+    @patch("bot.services.twitter_client.media_uploader.upload_media")
+    def test_upload_multiple_media_video_limit_exceeded(self, mock_upload):
+        """動画 5 本なら False"""
+        media_paths = [f"video{i}.mp4" for i in range(5)]
+        result = upload_multiple_media(MagicMock(), media_paths)
+        assert result is False
+        mock_upload.assert_not_called()
 
 
 if __name__ == '__main__':
