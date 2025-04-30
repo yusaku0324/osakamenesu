@@ -1,0 +1,26 @@
+name: mac-studio tests
+
+on:
+  push:
+    branches: [main]        # または pull_request など
+
+jobs:
+  test:
+    # UI に表示されているラベルと一致させる
+    runs-on: [self-hosted, macstudio]   # macOS/ARM64 でも可
+    timeout-minutes: 30
+    # 任意
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 依存関係をインストール
+        run: pip install -r requirements.txt
+
+      - name: テスト実行
+        run: pytest -q
