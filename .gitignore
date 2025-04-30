@@ -67,3 +67,7 @@ profiles/test/
 # Temporary files
 tmp/
 temp/
+
+# Local dev
+.venv/
+.python-version
