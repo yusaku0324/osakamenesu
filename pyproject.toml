@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "kakeru"
 version = "0.1.0"
 description = "Social media automation for men's massage recruitment"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 dependencies = [
     "selenium>=4.0.0",
     "webdriver-manager>=3.8.0",
@@ -34,7 +34,7 @@ exclude = ["tests*"]
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py312']
 
 [tool.isort]
 profile = "black"

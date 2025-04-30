@@ -13,7 +13,7 @@ Kakeruは、X（旧Twitter）に自動で投稿するためのPythonツールで
 
 ## 必要条件
 
-- Python 3.8以上
+- Python 3.12以上
 - OpenAI API キー
 - X（旧Twitter）API キー（Bearer Token）
 
