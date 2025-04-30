@@ -1,4 +1,7 @@
 Kakeru - X（旧Twitter）自動投稿ツール
+
+![CI](https://github.com/yusaku0324/kakeru/actions/workflows/run-tests.yml/badge.svg)
+
 画像を表示
 概要
 Kakeruは、X（旧Twitter）に自動で投稿するためのPythonツールです。OpenAI APIを使用して募集ツイートを生成し、X APIを使用して自動投稿します。
