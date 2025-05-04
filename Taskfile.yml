@@ -17,3 +17,4 @@ includes:
   fixpatch: tasks/fix_patch.yml
   workflow: tasks/workflow.yml
   validate: tasks/validate.yml
+  ci: tasks/ci.yml

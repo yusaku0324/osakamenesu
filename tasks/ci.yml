@@ -1,0 +1,43 @@
+---
+version: "3"
+
+vars:
+  BRANCH: "{{.CLI_ARGS | default `main`}}"
+
+tasks:
+  # --------------------------------------------------
+  # 1️⃣  GitHub Actions 用ワンショット Push
+  # --------------------------------------------------
+  push:
+    desc: "git add -A → commit → push (HEAD↔origin/{{.BRANCH}})"
+    cmds:
+      - git add -A
+      - |
+          if git diff --cached --quiet; then
+            echo "🟢 nothing to commit (skip)"; 
+          else
+            git commit -m "ci: auto-push"
+          fi
+      - git push -u origin HEAD:{{.BRANCH}}
+
+  # --------------------------------------------------
+  # 2️⃣  GitHub Actions が終わるまで待機
+  # --------------------------------------------------
+  wait:
+    desc: "poll GitHub Actions until workflow {{.BRANCH}} finishes"
+    deps: [push]
+    cmds:
+      - |
+          while :; do
+            SHA=$(git rev-parse HEAD)
+            STATUS=$(gh run list -c "$SHA" -b "$SHA" \
+                       --json status   -q '.[0].status'     2>/dev/null || echo none)
+            RESULT=$(gh run list -c "$SHA" -b "$SHA" \
+                       --json conclusion -q '.[0].conclusion' 2>/dev/null || echo none)
+
+            [[ "$STATUS" == none       ]] && { echo "🔄 run not found yet"; sleep 20; continue; }
+            [[ "$STATUS" != completed  ]] && { echo "⏳ CI $STATUS…";      sleep 20; continue; }
+
+            [[ "$RESULT" == success ]] && { echo "🎉 CI success"; exit 0; }
+            echo "❌ CI $RESULT"; exit 1
+          done 
