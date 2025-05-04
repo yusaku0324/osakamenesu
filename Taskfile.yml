@@ -1,0 +1,12 @@
+---
+version: "3"
+
+includes:
+  core: tasks/core.yml
+  venv: tasks/venv.yml
+  cursor: tasks/cursor.yml
+  tests: tasks/tests.yml
+  flow: tasks/flow.yml
+  next: tasks/next.yml
+  parallel: tasks/parallel.yml
+  validate: tasks/validate.yml

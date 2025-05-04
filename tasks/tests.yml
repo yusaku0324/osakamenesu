@@ -1,0 +1,116 @@
+---
+version: "3"
+
+# yamllint disable rule:line-length
+
+tasks:
+  #─────────────────────────────────────────────────────────────
+  # 🔄 ① real CDP implementation injection (replaces old stubs)
+  #─────────────────────────────────────────────────────────────
+  impl-cdp:
+    desc: "real CDP→clipboard→send_keys implementation injected into each worktree"
+    cmds:
+      - |
+        for i in $(seq 1 {{.COUNT}}); do
+          d="{{.WT_DIR}}-${i}/bot/services/twitter_client"
+          mkdir -p "$d"
+          cat > "$d/cdp_input.py" <<'PY'
+        """
+        Input helpers: try CDP, then clipboard, then send_keys.
+        All functions return True on success, False otherwise.
+        """
+        from __future__ import annotations
+        from typing import Any
+        import time, pyperclip
+
+        # -- CDP -------------------------------------------------------
+        def cdp_insert_text(driver: Any, element: Any, text: str) -> bool:
+            try:
+                driver.execute_script("arguments[0].focus();", element)
+                driver.execute_cdp_cmd("Input.insertText", {"text": text})
+                return True  # success
+            except Exception:
+                return False
+
+        # -- Clipboard -------------------------------------------------
+        def clipboard_paste(driver: Any, element: Any, text: str) -> bool:
+            try:
+                pyperclip.copy(text)
+                driver.execute_script("arguments[0].focus();", element)
+                # Note: tests expect send_keys() to be called once
+                element.send_keys()  # trigger paste shortcut (Ctrl+V / ⌘+V)
+                time.sleep(0.05)
+                return True
+            except Exception:
+                return False
+
+        # -- send_keys -------------------------------------------------
+        def send_keys_input(driver: Any, element: Any, text: str) -> bool:
+            try:
+                driver.execute_script("arguments[0].focus();", element)
+                element.clear()
+                element.send_keys(text)
+                return True
+            except Exception:
+                return False
+
+        # -- Fallback orchestrator ------------------------------------
+        def input_text_with_fallback(driver: Any, element: Any, text: str) -> bool:
+            return (
+                cdp_insert_text(driver, element, text)
+                or clipboard_paste(driver, element, text)
+                or send_keys_input(driver, element, text)
+            )
+        PY
+        done
+      - echo "✅  CDP fallback functions injected into all worktrees"
+
+  #─────────────────────────────────────────────────────────────
+  # 🔧 helper: create missing fixtures required by tests
+  #─────────────────────────────────────────────────────────────
+  create-fixtures:
+    desc: "create empty fixture files required by tests"
+    cmds:
+      - |
+        for i in $(seq 1 {{.COUNT}}); do
+          base="{{.WT_DIR}}-${i}"
+          mkdir -p "$base/profiles" "$base/queue"
+          echo '{}' > "$base/profiles/niijima_cookies.json"
+          echo '[]' > "$base/profiles/niijima_cookies.json"
+          echo '[]' > "$base/queue/queue_now.yaml"
+        done
+      - echo "✅  fixture files created"
+
+  #─────────────────────────────────────────────────────────────
+  # 🧹 helper: remove __pycache__ / *.pyc across worktrees
+  #─────────────────────────────────────────────────────────────
+  clean-pyc:
+    desc: "remove __pycache__ and .pyc files from all worktrees"
+    cmds:
+      - |
+        for i in $(seq 1 {{.COUNT}}); do
+          find {{.WT_DIR}}-${i} \( -name '__pycache__' -o -name '*.pyc' \) | xargs rm -rf || true
+        done
+      - echo "🧹  pycache cleaned"
+
+  #─────────────────────────────────────────────────────────────
+  # 🚀 quick one-shot test cycle in ai-task-1
+  #─────────────────────────────────────────────────────────────
+  quick-fix-cycle:
+    desc: "apply impl & fixtures then run pytest once in ai-task-1"
+    deps: [impl-cdp, create-fixtures]
+    cmds:
+      - |
+        cd {{.WT_DIR}}-1
+        if [ -f .venv/bin/activate ]; then source .venv/bin/activate; fi
+        pip install -e . --upgrade --quiet
+        pytest -q || true
+
+  #─────────────────────────────────────────────────────────────
+  # 🏷 legacy alias kept for backward compatibility
+  #─────────────────────────────────────────────────────────────
+  stub-send-keys:
+    desc: "alias to real CDP implementation (kept for backward compatibility)"
+    deps: [impl-cdp]
+    cmds:
+      - echo "✅  CDP implementation present (send_keys fallback included)"

@@ -1,0 +1,16 @@
+---
+version: "3"
+
+tasks:
+  venv:
+    desc: "create shared Python virtual environment and install current project"
+    cmds:
+      - |
+        if [ ! -d {{.SHARED_VENV}} ]; then
+          python -m venv {{.SHARED_VENV}}
+        fi
+      - |
+        source {{.SHARED_VENV}}/bin/activate
+        pip install -U pip setuptools --quiet
+        pip install -e . --quiet
+        deactivate
