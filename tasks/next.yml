@@ -34,6 +34,12 @@ tasks:
     desc: "wait for CI validate-and-test to turn green"
     cmds:
       - |
+        # Ensure GitHub CLI is available
+        if ! command -v gh >/dev/null 2>&1; then
+          echo "🔧 Installing GitHub CLI via Homebrew …"
+          brew install gh || { echo "❌ Failed to install gh"; exit 1; }
+        fi
+
         WF="validate-and-test"
         SHA=$(git rev-parse HEAD)
         echo "⏳ waiting for $WF / $SHA"
