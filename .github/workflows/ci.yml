@@ -19,6 +19,14 @@ jobs:
       - name: Prepare toolcache dir
         run: mkdir -p "$RUNNER_TOOL_CACHE"
 
+      # Work-around: actions/setup-python on self-hosted mac ignores env vars
+      # and tries to create /Users/runner/hostedtoolcache. Pre-create it with
+      # write permission (or symlink) to avoid "Permission denied".
+      - name: Workaround setup-python permission issue
+        run: |
+          sudo mkdir -p /Users/runner/hostedtoolcache || true
+          sudo chmod -R 777 /Users/runner || true
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'   # 3.12 が不要なら固定も可
