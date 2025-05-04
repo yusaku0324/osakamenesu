@@ -8,6 +8,7 @@ vars:
   CURSOR_BIN: "$(command -v cursor-cli || command -v cursor)"
   SHARED_VENV: "../shared_venv"             # shared virtual environment path
   CFG: "../kakeru/agents.yaml"    # default Cursor agent config path
+  TEST_PATH: tests                # default pytest path
 
 # Environment variables applied project-wide
 env:

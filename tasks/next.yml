@@ -2,78 +2,60 @@
 version: "3"
 
 includes:
-  flow: ./flow.yml      # validate / pipeline-local など
-  core: ./core.yml      # COUNT=12 など共通変数
+  core: ./core.yml          # COUNT / WT_DIR など共通変数
 
 tasks:
-  #──────────────────────────────────────────────
-  # ① 変更ファイルをコミット ＋ プッシュ
-  #──────────────────────────────────────────────
+  #--------------------------------------------------#
+  # 1) git add → commit → push     (名前修正)
+  #    next:commit-push
+  #--------------------------------------------------#
   commit-push:
-    desc: "git pull --rebase → add → commit → push"
+    desc: "stage all → commit → push HEAD"
+    cmds:
+      - git add -A
+      - |
+          if git diff --cached --quiet; then
+            echo "🟢 nothing to commit (skip commit)"
+          else
+            git commit -m "fix: green branch squash"
+          fi
+      - git push -u origin HEAD
+
+  #--------------------------------------------------#
+  # 2) CI 待機         (next:ci-wait はそのまま可)
+  #--------------------------------------------------#
+  ci-wait:
+    desc: "wait until GitHub Actions on HEAD is green"
+    vars:
+      SHA: "$(git rev-parse HEAD)"
     cmds:
       - |
-        # 1. 変更をステージしてコミット（変更が無ければスキップ）
-        git add -A
-        git commit -m "task split + COUNT=12 pipeline" || echo "No changes to commit"
+          while :; do
+            STATUS=$(gh run list -c "{{.SHA}}" -b "{{.SHA}}" \
+                     --json status   -q '.[0].status'     2>/dev/null || echo none)
+            RESULT=$(gh run list -c "{{.SHA}}" -b "{{.SHA}}" \
+                     --json conclusion -q '.[0].conclusion' 2>/dev/null || echo none)
+            if [ "$STATUS" = none ];            then echo "🔄 run not found yet"; sleep 20; continue; fi
+            if [ "$STATUS" != completed ];      then echo "⏳ CI $STATUS…";      sleep 20; continue; fi
+            [ "$RESULT" = success ] && break || { echo "❌ CI $RESULT"; exit 1; }
+          done
+      - echo "✅ CI green!"
 
-        # 2. 最新 main をリベース
-        git pull --rebase origin main || {
-          echo "⚠️  Rebase で衝突しました。解決後 → git add <files> && git rebase --continue"; exit 1; }
-
-        # 3. プッシュ
-        git push
-        echo "✅  push 完了"
-
-  #──────────────────────────────────────────────
-  # ② GitHub Actions の validate-and-test が終わるまで待つ
-  #    gh CLI が必要（brew install gh）
-  #──────────────────────────────────────────────
-  ci:wait:
-    deps: [commit-push]
-    desc: "wait for GitHub Actions validate-and-test (skip if gh 未認証)"
+  #--------------------------------------------------#
+  # 3) ワンショット連鎖 (名前修正)
+  #    next:push-main   ← commit-push → ci-wait
+  #--------------------------------------------------#
+  push-main:
+    desc: "commit-push & wait for CI green"
+    deps: [commit-push, ci-wait]
     cmds:
-      # 0) gh CLI ログイン確認（未認証なら早期終了）
-      - |
-        if ! gh auth status >/dev/null 2>&1; then
-          echo "🔒  gh 未認証のため CI ポーリングをスキップします"; exit 0
-        fi
+      - echo "🎉  main branch is green!"
 
-      # 1) ワークフロー完了までポーリング
-      - |
-        WF="validate-and-test"
-        SHA=$(git rev-parse HEAD)
-        echo "⏳ waiting for $WF on $SHA"
-
-        while :; do
-          STATUS=$(gh run list -c "$WF" -b "$SHA" --json status -q '.[0].status' 2>/dev/null || echo "none")
-          RESULT=$(gh run list -c "$WF" -b "$SHA" --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "none")
-          [ "$STATUS" = "none" ] && { echo "🔍  run not found yet"; sleep 20; continue; }
-          echo "… $STATUS / $RESULT"
-          [ "$STATUS" = "completed" ] && break
-          sleep 20
-        done
-
-        if [ "$RESULT" != "success" ]; then
-          echo "❌  CI failed ($RESULT)"; exit 1
-        fi
-        echo "🎉  CI green!"
-
-  #──────────────────────────────────────────────
-  # ③ ローカル 12 並列パイプラインを実行（任意）
-  #──────────────────────────────────────────────
-  local-run:
-    deps: [ci:wait]
-    desc: "COUNT=12 で local pipeline (parallel run→pick)"
-    cmds:
-      - task flow:pipeline-local
-      - echo "🚀 local parallel loop finished"
-
-  #──────────────────────────────────────────────
-  # ④ すべてワンコマンド
-  #──────────────────────────────────────────────
-  done:
-    desc: "commit → push → CI wait → local parallel run"
-    deps: [local-run]
-    cmds:
-      - echo "🌟  全工程完了！" 
+#-------------------------------------------------------------#
+# alias: commit:push  (colon style)
+#-------------------------------------------------------------#
+"commit:push":
+  desc: "stage-all → commit → push current branch (alias)"
+  deps: [commit-push]
+  cmds:
+    - echo "✅ commit:push finished" 

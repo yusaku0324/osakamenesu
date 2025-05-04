@@ -2,7 +2,7 @@
 version: "3"
 
 tasks:
-  venv:
+  create-shared:
     desc: "create shared Python virtual environment and install current project"
     cmds:
       - |
@@ -14,3 +14,8 @@ tasks:
         pip install -U pip setuptools --quiet
         pip install -e . --quiet
         deactivate
+
+  # legacy alias
+  venv:
+    deps: [create-shared]
+    cmds: [echo "(alias) shared venv ensured"]

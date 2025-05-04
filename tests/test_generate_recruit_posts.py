@@ -17,7 +17,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
-import generate_recruit_posts
+from bot.services.twitter_client import generate_recruit_posts
 
 
 @pytest.fixture
@@ -73,22 +73,22 @@ def test_generate_recruit_post(mock_openai_response):
 
 def test_post_to_twitter(mock_webdriver):
     """post_to_twitter関数のテスト"""
-    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+    with patch("bot.services.twitter_client.generate_recruit_posts.create_driver") as mock_create_driver:
         mock_create_driver.return_value = mock_webdriver
         
-        with patch("generate_recruit_posts.load_cookies") as mock_load_cookies:
+        with patch("bot.services.twitter_client.generate_recruit_posts.load_cookies") as mock_load_cookies:
             mock_load_cookies.return_value = True
             
-            with patch("generate_recruit_posts.is_logged_in") as mock_is_logged_in:
+            with patch("bot.services.twitter_client.generate_recruit_posts.is_logged_in") as mock_is_logged_in:
                 mock_is_logged_in.return_value = True
                 
                 tweet_button = MagicMock()
                 tweet_box = MagicMock()
                 mock_webdriver.find_element.side_effect = [tweet_button, tweet_box]
                 
-                with patch("generate_recruit_posts.click_element"):
-                    with patch("generate_recruit_posts.paste_text"):
-                        with patch("generate_recruit_posts.get_random_emojis") as mock_emojis:
+                with patch("bot.services.twitter_client.generate_recruit_posts.click_element"):
+                    with patch("bot.services.twitter_client.generate_recruit_posts.paste_text"):
+                        with patch("bot.services.twitter_client.generate_recruit_posts.get_random_emojis") as mock_emojis:
                             mock_emojis.return_value = "😀😃"
                             
                             with patch("selenium.webdriver.support.expected_conditions.element_to_be_clickable") as mock_clickable:
@@ -109,7 +109,7 @@ def test_post_to_twitter(mock_webdriver):
 
 def test_post_to_twitter_error():
     """post_to_twitter関数のエラーケーステスト"""
-    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+    with patch("bot.services.twitter_client.generate_recruit_posts.create_driver") as mock_create_driver:
         mock_create_driver.side_effect = Exception("テストエラー")
         
         result = generate_recruit_posts.post_to_twitter("テストツイート")
@@ -121,14 +121,14 @@ def test_post_to_twitter_error():
 
 def test_post_to_twitter_login_error():
     """post_to_twitter関数のログインエラーケーステスト"""
-    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+    with patch("bot.services.twitter_client.generate_recruit_posts.create_driver") as mock_create_driver:
         mock_driver = MagicMock()
         mock_create_driver.return_value = mock_driver
         
-        with patch("generate_recruit_posts.load_cookies") as mock_load_cookies:
+        with patch("bot.services.twitter_client.generate_recruit_posts.load_cookies") as mock_load_cookies:
             mock_load_cookies.return_value = False
             
-            with patch("generate_recruit_posts.manual_login_flow") as mock_manual_login:
+            with patch("bot.services.twitter_client.generate_recruit_posts.manual_login_flow") as mock_manual_login:
                 mock_manual_login.return_value = False
                 
                 result = generate_recruit_posts.post_to_twitter("テストツイート")
@@ -141,14 +141,14 @@ def test_post_to_twitter_login_error():
 
 def test_post_to_twitter_element_error():
     """post_to_twitter関数の要素検索エラーケーステスト"""
-    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+    with patch("bot.services.twitter_client.generate_recruit_posts.create_driver") as mock_create_driver:
         mock_driver = MagicMock()
         mock_create_driver.return_value = mock_driver
         
-        with patch("generate_recruit_posts.load_cookies") as mock_load_cookies:
+        with patch("bot.services.twitter_client.generate_recruit_posts.load_cookies") as mock_load_cookies:
             mock_load_cookies.return_value = True
             
-            with patch("generate_recruit_posts.is_logged_in") as mock_is_logged_in:
+            with patch("bot.services.twitter_client.generate_recruit_posts.is_logged_in") as mock_is_logged_in:
                 mock_is_logged_in.return_value = True
                 
                 mock_driver.find_element.side_effect = NoSuchElementException("要素が見つかりません")
@@ -162,21 +162,21 @@ def test_post_to_twitter_element_error():
 
 def test_post_to_twitter_timeout_error():
     """post_to_twitter関数のタイムアウトエラーケーステスト"""
-    with patch("generate_recruit_posts.create_driver") as mock_create_driver:
+    with patch("bot.services.twitter_client.generate_recruit_posts.create_driver") as mock_create_driver:
         mock_driver = MagicMock()
         mock_create_driver.return_value = mock_driver
         
-        with patch("generate_recruit_posts.load_cookies") as mock_load_cookies:
+        with patch("bot.services.twitter_client.generate_recruit_posts.load_cookies") as mock_load_cookies:
             mock_load_cookies.return_value = True
             
-            with patch("generate_recruit_posts.is_logged_in") as mock_is_logged_in:
+            with patch("bot.services.twitter_client.generate_recruit_posts.is_logged_in") as mock_is_logged_in:
                 mock_is_logged_in.return_value = True
                 
                 tweet_button = MagicMock()
                 mock_driver.find_element.return_value = tweet_button
                 
-                with patch("generate_recruit_posts.click_element"):
-                    with patch("generate_recruit_posts.paste_text"):
+                with patch("bot.services.twitter_client.generate_recruit_posts.click_element"):
+                    with patch("bot.services.twitter_client.generate_recruit_posts.paste_text"):
                         with patch("selenium.webdriver.support.ui.WebDriverWait") as mock_wait:
                             mock_wait_instance = MagicMock()
                             mock_wait.return_value = mock_wait_instance
@@ -377,8 +377,8 @@ def test_ensure_utf8_encoding():
             assert result is False
 
 
-@patch("generate_recruit_posts.generate_recruit_post")
-@patch("generate_recruit_posts.post_to_twitter")
+@patch("bot.services.twitter_client.generate_recruit_posts.generate_recruit_post")
+@patch("bot.services.twitter_client.generate_recruit_posts.post_to_twitter")
 def test_main_success(mock_post, mock_generate):
     """main関数の成功ケーステスト"""
     mock_generate.return_value = "テストツイート"
@@ -391,8 +391,8 @@ def test_main_success(mock_post, mock_generate):
     assert mock_post.called
 
 
-@patch("generate_recruit_posts.generate_recruit_post")
-@patch("generate_recruit_posts.post_to_twitter")
+@patch("bot.services.twitter_client.generate_recruit_posts.generate_recruit_post")
+@patch("bot.services.twitter_client.generate_recruit_posts.post_to_twitter")
 def test_main_failure(mock_post, mock_generate):
     """main関数の失敗ケーステスト"""
     mock_generate.return_value = "テストツイート"
@@ -405,7 +405,7 @@ def test_main_failure(mock_post, mock_generate):
     assert mock_post.called
 
 
-@patch("generate_recruit_posts.generate_recruit_post")
+@patch("bot.services.twitter_client.generate_recruit_posts.generate_recruit_post")
 def test_main_unicode_error(mock_generate):
     """main関数のUnicodeEncodeErrorケーステスト"""
 
@@ -424,7 +424,7 @@ def test_main_unicode_error(mock_generate):
 
     mock_generate.side_effect = side_effect
 
-    with patch("generate_recruit_posts.post_to_twitter") as mock_post:
+    with patch("bot.services.twitter_client.generate_recruit_posts.post_to_twitter") as mock_post:
         mock_post.return_value = {"success": True, "tweet_id": "1234567890"}
 
         with patch("sys.stdout") as mock_stdout:
@@ -438,7 +438,7 @@ def test_main_unicode_error(mock_generate):
                 assert mock_post.called
 
 
-@patch("generate_recruit_posts.generate_recruit_post")
+@patch("bot.services.twitter_client.generate_recruit_posts.generate_recruit_post")
 def test_main_unexpected_error(mock_generate):
     """main関数の予期しないエラーケーステスト"""
     mock_generate.side_effect = Exception("予期しないエラー")

@@ -45,7 +45,7 @@ tasks:
               git branch -D "$BRANCH" || true
               exit 0
             fi
-            [ -n "$VIRTUAL_ENV" ] && deactivate || true
+            # No deactivate to avoid errors with non-shell virtualenv wrappers
             cd "$ROOT_DIR" >/dev/null
           done
           echo "❌  No branch passed tests" && exit 1 
