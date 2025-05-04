@@ -8,21 +8,26 @@ on:
 jobs:
   test:
     runs-on: macos-latest     # 必要なら ubuntu-latest などに変更
+    env:
+      # 書き込み可能な場所へ変更（例: ランナー作業ディレクトリ直下）
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/_toolcache
+      AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_toolcache
 
     steps:
       - uses: actions/checkout@v4
 
-      # ▼ Python 3.11 に固定
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Prepare toolcache dir
+        run: mkdir -p "$RUNNER_TOOL_CACHE"
 
-      - name: Install Poetry deps (or pip)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # 3.12 が不要なら固定も可
+          cache: 'pip'
+
+      - name: Install deps
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e . "undetected-chromedriver>=4.0.0rc4"
+          python -m pip install -U pip
+          pip install -r requirements.txt
 
       - name: Run tests
-        run: |
-          pytest -q 
+        run: pytest -q 

@@ -48,4 +48,21 @@ tasks:
             fi
 
             echo "❌ CI $RESULT"; exit 1
-          done 
+          done
+
+  # ----------------------------------------------------------------------------
+  # ③ ブラウザで最新 CI Run を直接開く
+  #     task ci:screen
+  # ----------------------------------------------------------------------------
+  screen:
+    desc: "open latest CI run in browser"
+    cmds:
+      - |
+          SHA=$(git rev-parse HEAD)
+          URL=$(gh run list -c "$SHA" -L 1 --json url -q '.[0].url')
+          if [ -n "$URL" ] && [ "$URL" != "null" ]; then
+            echo "🌐 Opening $URL"
+            open "$URL"
+          else
+            echo "⚠️  No CI run found for $SHA"; exit 1
+          fi 
