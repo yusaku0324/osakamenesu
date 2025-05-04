@@ -27,7 +27,7 @@ jobs:
           sudo mkdir -p /Users/runner/hostedtoolcache || true
           sudo chmod -R 777 /Users/runner || true
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'   # 3.12 が不要なら固定も可
           cache: 'pip'
