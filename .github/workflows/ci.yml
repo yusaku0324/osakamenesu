@@ -7,30 +7,33 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest     # 必要なら ubuntu-latest などに変更
+    # ❶ macOS 自ホストランナーを使う場合は ↓ を self-hosted に変更
+    runs-on: macos-latest
+    # ❷ actions/setup-python が書き込む場所を自前に変更
     env:
-      # 書き込み可能な場所へ変更（例: ランナー作業ディレクトリ直下）
       RUNNER_TOOL_CACHE: ${{ github.workspace }}/_toolcache
       AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_toolcache
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare toolcache dir
+      # ❸ 先にキャッシュ用ディレクトリを作成
+      - name: Prepare toolcache
         run: mkdir -p "$RUNNER_TOOL_CACHE"
 
-      # Work-around: actions/setup-python on self-hosted mac ignores env vars
-      # and tries to create /Users/runner/hostedtoolcache. Pre-create it with
-      # write permission (or symlink) to avoid "Permission denied".
-      - name: Workaround setup-python permission issue
-        run: |
-          sudo mkdir -p /Users/runner/hostedtoolcache || true
-          sudo chmod -R 777 /Users/runner || true
-
-      - uses: actions/setup-python@v4
+      # ❹ 唯一の Python セットアップ
+      - id: setup-python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   # 3.12 が不要なら固定も可
+          python-version: '3.11'
           cache: 'pip'
+
+      # ❺ デバッグ用に Python 情報を出力（初回だけ）
+      - name: Debug Python info
+        run: |
+          which python
+          python --version
+          echo "Toolcache = $RUNNER_TOOL_CACHE"
 
       - name: Install deps
         run: |
