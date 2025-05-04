@@ -10,13 +10,20 @@ tasks:
   # ① 変更ファイルをコミット ＋ プッシュ
   #──────────────────────────────────────────────
   commit-push:
-    desc: "git add → commit → push を一括"
+    desc: "git pull --rebase → add → commit → push"
     cmds:
       - |
+        # 1. 変更をステージしてコミット（変更が無ければスキップ）
         git add -A
-        git commit -m "task split + COUNT=12 pipeline"
+        git commit -m "task split + COUNT=12 pipeline" || echo "No changes to commit"
+
+        # 2. 最新 main をリベース
+        git pull --rebase origin main || {
+          echo "⚠️  Rebase で衝突しました。解決後 → git add <files> && git rebase --continue"; exit 1; }
+
+        # 3. プッシュ
         git push
-      - echo "✅  commit & push 完了"
+        echo "✅  push 完了"
 
   #──────────────────────────────────────────────
   # ② GitHub Actions の validate-and-test が終わるまで待つ
