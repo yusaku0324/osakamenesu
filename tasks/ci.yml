@@ -1,43 +1,51 @@
 ---
 version: "3"
 
-vars:
-  BRANCH: "{{.CLI_ARGS | default `main`}}"
+includes:
+  core: ./core.yml        # COUNT / WT_DIR など共通変数
 
 tasks:
-  # --------------------------------------------------
-  # 1️⃣  GitHub Actions 用ワンショット Push
-  # --------------------------------------------------
-  push:
-    desc: "git add -A → commit → push (HEAD↔origin/{{.BRANCH}})"
+  # ----------------------------------------------------------------------------
+  # ① 変更をコミットして main へ push
+  #     task ci:commit-push
+  # ----------------------------------------------------------------------------
+  commit-push:
+    desc: "stage → commit → push (main)"
     cmds:
       - git add -A
       - |
-          if git diff --cached --quiet; then
-            echo "🟢 nothing to commit (skip)"; 
-          else
+          if ! git diff --cached --quiet; then
             git commit -m "ci: auto-push"
+          else
+            echo "🟢 nothing to commit (skip commit)"
           fi
-      - git push -u origin HEAD:{{.BRANCH}}
+      - git push -u origin HEAD
 
-  # --------------------------------------------------
-  # 2️⃣  GitHub Actions が終わるまで待機
-  # --------------------------------------------------
-  wait:
-    desc: "poll GitHub Actions until workflow {{.BRANCH}} finishes"
-    deps: [push]
+  # ----------------------------------------------------------------------------
+  # ② 直近コミットの GitHub Actions をウォッチして結果が出るまで待機
+  #     task ci:ci-wait
+  # ----------------------------------------------------------------------------
+  ci-wait:
+    desc: "wait GitHub Actions result for HEAD commit"
+    deps: [commit-push]
+    silent: true
     cmds:
       - |
+          SHA=$(git rev-parse HEAD)
+          echo "🔍 waiting CI for $SHA ..."
           while :; do
-            SHA=$(git rev-parse HEAD)
-            STATUS=$(gh run list -c "$SHA" -b "$SHA" \
-                       --json status   -q '.[0].status'     2>/dev/null || echo none)
-            RESULT=$(gh run list -c "$SHA" -b "$SHA" \
-                       --json conclusion -q '.[0].conclusion' 2>/dev/null || echo none)
+            STATUS=$(gh run list -c "$SHA" -L 1 --json status -q '.[0].status' 2>/dev/null || echo none)
+            RESULT=$(gh run list -c "$SHA" -L 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo none)
 
-            [[ "$STATUS" == none       ]] && { echo "🔄 run not found yet"; sleep 20; continue; }
-            [[ "$STATUS" != completed  ]] && { echo "⏳ CI $STATUS…";      sleep 20; continue; }
+            if [ "$STATUS" = none ]; then
+              echo "🔄 run not found yet"; sleep 20; continue
+            fi
+            if [ "$STATUS" != completed ]; then
+              echo "⏳ CI $STATUS…"; sleep 20; continue
+            fi
+            if [ "$RESULT" = success ]; then
+              echo "✅ CI success"; break
+            fi
 
-            [[ "$RESULT" == success ]] && { echo "🎉 CI success"; exit 0; }
             echo "❌ CI $RESULT"; exit 1
           done 
