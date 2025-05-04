@@ -31,29 +31,33 @@ tasks:
   #──────────────────────────────────────────────
   ci:wait:
     deps: [commit-push]
-    desc: "wait for CI validate-and-test to turn green"
+    desc: "wait for GitHub Actions validate-and-test (skip if gh 未認証)"
     cmds:
+      # 0) gh CLI ログイン確認（未認証なら早期終了）
       - |
-        # Ensure GitHub CLI is available
-        if ! command -v gh >/dev/null 2>&1; then
-          echo "🔧 Installing GitHub CLI via Homebrew …"
-          brew install gh || { echo "❌ Failed to install gh"; exit 1; }
+        if ! gh auth status >/dev/null 2>&1; then
+          echo "🔒  gh 未認証のため CI ポーリングをスキップします"; exit 0
         fi
 
+      # 1) ワークフロー完了までポーリング
+      - |
         WF="validate-and-test"
         SHA=$(git rev-parse HEAD)
-        echo "⏳ waiting for $WF / $SHA"
+        echo "⏳ waiting for $WF on $SHA"
+
         while :; do
-          STATUS=$(gh run list -c "$WF" -b "$SHA" --json status -q '.[0].status')
-          RESULT=$(gh run list -c "$WF" -b "$SHA" --json conclusion -q '.[0].conclusion')
+          STATUS=$(gh run list -c "$WF" -b "$SHA" --json status -q '.[0].status' 2>/dev/null || echo "none")
+          RESULT=$(gh run list -c "$WF" -b "$SHA" --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "none")
+          [ "$STATUS" = "none" ] && { echo "🔍  run not found yet"; sleep 20; continue; }
           echo "… $STATUS / $RESULT"
           [ "$STATUS" = "completed" ] && break
-          sleep 30
+          sleep 20
         done
+
         if [ "$RESULT" != "success" ]; then
-          echo "❌ CI failed ($RESULT)"; exit 1
+          echo "❌  CI failed ($RESULT)"; exit 1
         fi
-        echo "🎉 CI green!"
+        echo "🎉  CI green!"
 
   #──────────────────────────────────────────────
   # ③ ローカル 12 並列パイプラインを実行（任意）
