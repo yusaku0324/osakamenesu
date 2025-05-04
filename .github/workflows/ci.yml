@@ -2,25 +2,27 @@ name: CI
 
 on:
   push:
-    branches: [ main ]          # feature ブランチでも回したい場合は '**'
+    branches: [ main ]        # feature ブランチでも回したい場合は '**'
   pull_request:
 
 jobs:
   test:
-    runs-on: macos-latest       # OS を変更する場合はここを ubuntu-latest などに
+    runs-on: macos-latest     # 必要なら ubuntu-latest などに変更
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      # ▼ Python 3.11 に固定
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
-      - name: Install deps
+      - name: Install Poetry deps (or pip)
         run: |
-          python -m pip install -U pip
-          pip install -e . "pytest>=7.4"
+          python -m pip install --upgrade pip
+          python -m pip install -e . "undetected-chromedriver>=4.0.0rc4"
 
       - name: Run tests
-        run: pytest -q 
+        run: |
+          pytest -q 
