@@ -1,0 +1,15 @@
+---
+version: "3"
+
+tasks:
+  login:
+    desc: "docker login placeholder"
+    cmds: [echo "🔑 docker login (stub)"]
+
+  build:
+    desc: "docker build placeholder"
+    cmds: [echo "🐳 docker build (stub)"]
+
+  push:
+    desc: "docker push placeholder"
+    cmds: [echo "📦 docker push (stub)"] 

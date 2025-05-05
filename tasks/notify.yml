@@ -1,0 +1,7 @@
+---
+version: "3"
+
+tasks:
+  slack-success:
+    desc: "Slack success message stub"
+    cmds: [echo "🎉 Notify Slack success (stub)"] 

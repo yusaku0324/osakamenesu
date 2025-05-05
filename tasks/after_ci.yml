@@ -1,0 +1,20 @@
+---
+version: "3"
+
+includes:
+  core:      ./core.yml
+  tests:     ./tests.yml
+  docker:    ./docker.yml
+  notify:    ./notify.yml
+
+tasks:
+  after-ci:full:
+    desc: "Run coverage → docker publish → send notifications"
+    cmds:
+      - task core:_core:noop
+      - task tests:quick-fix-cycle  # using existing coverage via quick pipeline
+      - task docker:login
+      - task docker:build
+      - task docker:push
+      - task notify:slack-success
+      - rm -rf .pytest_cache .mypy_cache || true 
