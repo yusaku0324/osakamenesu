@@ -1,0 +1,11 @@
+---
+version: "3"
+
+includes:
+  docker: ./docker.yml
+
+tasks:
+  list-latest:
+    desc: "list latest image in GHCR"
+    cmds:
+      - echo "ghcr images"  # stub; implement with gh api or crane ls 

@@ -19,3 +19,4 @@ includes:
   validate: tasks/validate.yml
   ci: tasks/ci.yml
   after: tasks/after_ci.yml
+  ghcr: tasks/ghcr.yml

@@ -5,6 +5,9 @@ tasks:
   slack-success:
     desc: "Slack success message stub"
     cmds: [echo "🎉 Notify Slack success (stub)"]
+  slack-failure:
+    desc: "Slack failure alert stub"
+    cmds: [echo "🚨 Notify Slack failure (stub)"]
   slack:
     desc: "Generic Slack notify stub"
     cmds: [echo "🔔 Slack notify (stub)"] 

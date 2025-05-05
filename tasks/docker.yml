@@ -24,4 +24,19 @@ tasks:
         TAG=$(git rev-parse --short=8 HEAD)
         docker tag kakeru:dev ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
         docker push ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
+        echo "📦 pushed ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}"
+
+  pull-latest:
+    desc: "pull latest image from GHCR"
+    cmds:
+      - docker pull ghcr.io/{{.GITHUB_USER}}/kakeru:latest
+
+  push-tag:
+    desc: "push version tag image to GHCR"
+    deps: [login]
+    cmds:
+      - |
+        TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        docker tag kakeru:dev ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
+        docker push ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
         echo "📦 pushed ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}" 
