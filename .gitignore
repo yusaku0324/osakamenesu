@@ -71,3 +71,7 @@ temp/
 # Local dev
 .venv/
 .python-version
+
+# Negation entries
+!profiles/niijima_cookies.json
+!queue/queue_now.yaml
