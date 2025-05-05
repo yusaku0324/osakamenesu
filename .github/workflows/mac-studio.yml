@@ -1,8 +1,7 @@
 name: mac-studio tests
 
 on:
-  push:
-    branches: [main]        # または pull_request など
+  workflow_dispatch:
 
 jobs:
   test:
