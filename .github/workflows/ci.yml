@@ -31,7 +31,7 @@ jobs:
 
       # ❹ 唯一の Python セットアップ
       - id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: 'pip'
