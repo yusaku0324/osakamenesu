@@ -72,6 +72,8 @@ temp/
 .venv/
 .python-version
 
-# Negation entries
+# Allow fixtures directories and files
+!profiles/
 !profiles/niijima_cookies.json
+!queue/
 !queue/queue_now.yaml
