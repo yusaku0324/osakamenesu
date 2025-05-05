@@ -7,9 +7,21 @@ tasks:
     cmds: [echo "🔑 docker login (stub)"]
 
   build:
-    desc: "docker build placeholder"
-    cmds: [echo "🐳 docker build (stub)"]
+    desc: "docker build image for dev"
+    cmds:
+      - docker build -t kakeru:dev .
+
+  run-local:
+    desc: "run container locally for smoke test"
+    cmds:
+      - docker run --rm -it -p 8000:8000 kakeru:dev
 
   push:
-    desc: "docker push placeholder"
-    cmds: [echo "📦 docker push (stub)"] 
+    desc: "docker push image to GHCR"
+    deps: [login]
+    cmds:
+      - |
+        TAG=$(git rev-parse --short=8 HEAD)
+        docker tag kakeru:dev ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
+        docker push ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}
+        echo "📦 pushed ghcr.io/{{.GITHUB_USER}}/kakeru:${TAG}" 
