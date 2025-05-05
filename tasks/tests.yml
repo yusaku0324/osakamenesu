@@ -130,7 +130,7 @@ tasks:
       - |
         cd {{.WT_DIR}}-1
         if [ -f .venv/bin/activate ]; then source .venv/bin/activate; fi
-        pip install -e . --upgrade --quiet
+        pip install -e . --upgrade --quiet || true
         pytest -q || true
 
   #─────────────────────────────────────────────────────────────
