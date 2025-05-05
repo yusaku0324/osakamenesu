@@ -19,11 +19,6 @@ jobs:
       - name: Prepare toolcache dir
         run: mkdir -p "$RUNNER_TOOL_CACHE"
 
-      - name: Fix toolcache permission
-        run: |
-          sudo mkdir -p /Users/runner/hostedtoolcache || true
-          sudo chown -R $(whoami) /Users/runner || true
-
       - name: Python をセットアップ
         uses: actions/setup-python@v4
         with:

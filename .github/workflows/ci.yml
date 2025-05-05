@@ -2,51 +2,26 @@ name: CI
 
 on:
   push:
-    branches: [ main ]        # feature ブランチでも回したい場合は '**'
+    branches: [ main ]
   pull_request:
 
 jobs:
   test:
-    # ❶ macOS 自ホストランナーを使う場合は ↓ を self-hosted に変更
-    runs-on: macos-latest
-    # ❷ actions/setup-python が書き込む場所を自前に変更
-    env:
-      RUNNER_TOOL_CACHE: ${{ github.workspace }}/_toolcache
-      AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_toolcache
-
+    runs-on: ubuntu-latest        # mac 固有のテストが無ければ切替
+    timeout-minutes: 10           # 無限実行を防ぐ
     steps:
       - uses: actions/checkout@v4
 
-      # ❸ 先にキャッシュ用ディレクトリを作成
-      - name: Prepare toolcache
-        run: mkdir -p "$RUNNER_TOOL_CACHE"
-
-      # mac self-hosted runner: setup-python@v5 expects /Users/runner/hostedtoolcache
-      # デフォルトユーザーが異なる環境では権限エラーになるため事前に作成して権限付与
-      - name: Fix toolcache permission (self-hosted macOS)
-        if: runner.os == 'macOS' && contains(runner.environment, 'self-hosted')
-        run: |
-          sudo mkdir -p /Users/runner/hostedtoolcache
-          sudo chown -R $(whoami) /Users/runner
-
-      # ❹ 唯一の Python セットアップ
-      - id: setup-python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
-
-      # ❺ デバッグ用に Python 情報を出力（初回だけ）
-      - name: Debug Python info
-        run: |
-          which python
-          python --version
-          echo "Toolcache = $RUNNER_TOOL_CACHE"
+          cache: 'pip'            # ~/.cache/pip を自動キャッシュ
 
       - name: Install deps
         run: |
-          python -m pip install -U pip
+          pip install -U pip wheel
           pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest -q 
+        run: |
+          pytest -q -n auto       # pytest-xdist で並列 
