@@ -18,3 +18,4 @@ includes:
   workflow: tasks/workflow.yml
   validate: tasks/validate.yml
   ci: tasks/ci.yml
+  after: tasks/after_ci.yml

@@ -18,33 +18,26 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest           # mac を使わない (権限/容量エラー回避)
+    runs-on: ubuntu-latest
     steps:
-      # 1) 取得
       - uses: actions/checkout@v4
 
-      # 2) Python 3.11 + キャッシュ (v4 を使用)
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3) 依存インストール
       - name: Install deps
-        run: pip install -r requirements.txt
+        run: pip install -q -r requirements.txt
 
-      # 4) Taskfile でカバー率付きテスト
-      - name: Run coverage tests
+      - name: Run pytest
+        run: pytest -q
+
+      - name: After-CI full pipeline
+        if: success()
         run: |
           curl -sSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
-          task next:test:coverage
-
-      # 5) 成果物として coverage.xml をアップロード (任意)
-      - uses: actions/upload-artifact@v4
-        if: always()              # 失敗時も収集したい場合は always()
-        with:
-          name: coverage
-          path: coverage.xml
+          task after-ci:full
 
   docker-publish:
     needs: test                   # テスト成功時のみ
