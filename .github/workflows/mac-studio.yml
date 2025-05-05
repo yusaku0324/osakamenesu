@@ -10,6 +10,7 @@ jobs:
     runs-on: [self-hosted, macstudio]   # macOS/ARM64 でも可
     timeout-minutes: 30
     env:
+      HOME: ${{ github.workspace }}
       RUNNER_TOOL_CACHE: ${{ github.workspace }}/_toolcache
       AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_toolcache
 
