@@ -37,7 +37,7 @@ jobs:
       - name: Run coverage tests
         run: |
           curl -sSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
-          task test:coverage
+          task next:test:coverage
 
       # 5) 成果物として coverage.xml をアップロード (任意)
       - uses: actions/upload-artifact@v4
