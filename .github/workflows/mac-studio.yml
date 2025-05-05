@@ -9,15 +9,26 @@ jobs:
     # UI に表示されているラベルと一致させる
     runs-on: [self-hosted, macstudio]   # macOS/ARM64 でも可
     timeout-minutes: 30
-    # 任意
+    env:
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/_toolcache
+      AGENT_TOOLSDIRECTORY: ${{ github.workspace }}/_toolcache
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare toolcache dir
+        run: mkdir -p "$RUNNER_TOOL_CACHE"
+
+      - name: Fix toolcache permission
+        run: |
+          sudo mkdir -p /Users/runner/hostedtoolcache || true
+          sudo chown -R $(whoami) /Users/runner || true
+
       - name: Python をセットアップ
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: 依存関係をインストール
         run: pip install -r requirements.txt
