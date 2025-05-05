@@ -21,6 +21,14 @@ jobs:
       - name: Prepare toolcache
         run: mkdir -p "$RUNNER_TOOL_CACHE"
 
+      # mac self-hosted runner: setup-python@v5 expects /Users/runner/hostedtoolcache
+      # デフォルトユーザーが異なる環境では権限エラーになるため事前に作成して権限付与
+      - name: Fix toolcache permission (self-hosted macOS)
+        if: runner.os == 'macOS' && contains(runner.environment, 'self-hosted')
+        run: |
+          sudo mkdir -p /Users/runner/hostedtoolcache
+          sudo chown -R $(whoami) /Users/runner
+
       # ❹ 唯一の Python セットアップ
       - id: setup-python
         uses: actions/setup-python@v5
