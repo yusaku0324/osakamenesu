@@ -37,7 +37,7 @@ jobs:
         if: success()
         run: |
           curl -sSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
-          task after-ci:full
+          task after:after-ci:full
 
   docker-publish:
     needs: test                   # テスト成功時のみ
