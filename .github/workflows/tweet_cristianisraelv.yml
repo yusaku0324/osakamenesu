@@ -48,6 +48,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # playwright install --with-deps chromium # Not needed if using selenium based poster
 
       - name: Create cookie file for @cristianisraelv
         env:
@@ -57,7 +58,7 @@ jobs:
           mkdir -p cookies
           echo "$TWITTER_ACCOUNT_COOKIES" > cookies/cristianisraelv_twitter_cookies.json
           echo "Cookie file created at cookies/cristianisraelv_twitter_cookies.json"
-          echo "Cookie file content (first 50 chars): $(head -c 50 cookies/cristianisraelv_twitter_cookies.json)"
+          # echo "Cookie file content (first 50 chars): $(head -c 50 cookies/cristianisraelv_twitter_cookies.json)" # Debug line, remove for production
 
       - name: Run tweet script for @cristianisraelv
         env:
@@ -69,6 +70,7 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           LOG_FILE="logs/posted_video_tweets_cristianisraelv.log"
+          if [ ! -f "$LOG_FILE" ]; then touch "$LOG_FILE"; fi # Ensure log file exists before adding
           git add "$LOG_FILE"
           if ! git diff --staged --quiet; then
             git commit -m "Update $LOG_FILE via GitHub Actions for @cristianisraelv"
