@@ -63,7 +63,7 @@ jobs:
       - name: Run tweet script for @cristianisraelv
         env:
           USE_UC: "1"
-        run: python post_video_tweet.py --account cristianisraelv --headless
+        run: python post_video_tweet.py --account cristianisraelv
 
       - name: Commit and push posted log for @cristianisraelv
         run: |
