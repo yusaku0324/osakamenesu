@@ -12,7 +12,7 @@ from typing import Dict, List, Set, Optional, Any
 try:
     from bot.services.twitter_client.driver_factory import create_driver
     from bot.services.twitter_client.cookie_loader import load_cookies
-    from bot.services.twitter_client.poster import post_to_twitterdriver
+    from bot.services.twitter_client.poster import post_to_twitter
     from bot.utils.log import setup_logger
 except ImportError as e:
     print(f"Error importing bot modules: {e}. Ensure 'bot' directory is in PYTHONPATH or script is run from project root.")
@@ -30,9 +30,9 @@ except ImportError as e:
         def load_cookies(driver, path):
             logger.error("STUB: load_cookies called! Bot modules not loaded.")
             return False # Simulate failure
-    if "post_to_twitterdriver" not in globals():
-        def post_to_twitterdriver(driver, text, media, reply_to, account, post_id):
-            logger.error("STUB: post_to_twitterdriver called! Bot modules not loaded.")
+    if "post_to_twitter" not in globals():
+        def post_to_twitter(driver, post_text, media_files, logger):
+            logger.error("STUB: post_to_twitter called! Bot modules not loaded.")
             return None # Simulate failure
 else:
     logger = setup_logger("video_tweeter", "video_tweeter.log")
@@ -191,23 +191,21 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
             logger.error(f"Failed to load cookies for {target_account_name_for_log}. Aborting post.")
             return
 
-        logger.info(f"Calling post_to_twitterdriver for account {target_account_name_for_log}...")
+        logger.info(f"Calling post_to_twitter for account {target_account_name_for_log}...")
         post_identifier = f"{account_id}_{question_for_log[:20].replace(' ','_')}_{int(time.time())}"
         
-        tweet_url_or_id = post_to_twitterdriver(
+        tweet_url_or_id = post_to_twitter(
             driver=driver,
-            text=tweet_text,
-            media=video_file_path, 
-            reply_to=None,
-            account=target_account_name_for_log,
-            post_id=post_identifier 
+            post_text=tweet_text,
+            media_files=[video_file_path] if video_file_path else None, 
+            logger=logger 
         )
 
         if tweet_url_or_id:
-            logger.info(f"Successfully posted for {target_account_name_for_log}! Outcome: {tweet_url_or_id}")
+            logger.info(f"Successfully posted for {target_account_name_for_log}! Tweet URL: {tweet_url_or_id}")
             append_to_posted_log(posted_log_path, question_for_log)
         else:
-            logger.error(f"Posting failed for {target_account_name_for_log} or did not return a success indicator.")
+            logger.error(f"Posting failed for {target_account_name_for_log}.")
 
     except Exception as e:
         logger.error(f"An error occurred during the posting process for {target_account_name_for_log}: {e}")
@@ -229,15 +227,8 @@ if __name__ == "__main__":
         required=True, 
         help="The account ID (e.g., cristianisraelv, menesu324) to use for posting. Affects cookie and log file paths."
     )
-    parser.add_argument(
-        "--debug", 
-        action="store_false", 
-        dest="headless", 
-        default=HEADLESS_BROWSER,
-        help="Run browser in non-headless mode for debugging (default is headless)."
-    )
     args = parser.parse_args()
 
     Path("logs").mkdir(parents=True, exist_ok=True)
     
-    asyncio.run(main_post_video_tweet(args.account, args.headless))
+    asyncio.run(main_post_video_tweet(args.account, HEADLESS_BROWSER))

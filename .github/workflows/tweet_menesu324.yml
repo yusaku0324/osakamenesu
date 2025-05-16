@@ -62,7 +62,7 @@ jobs:
       - name: Run tweet script for @menesu324
         env:
           USE_UC: "1"
-        run: python post_video_tweet.py --account menesu324 --headless
+        run: python post_video_tweet.py --account menesu324
 
       - name: Commit and push posted log for @menesu324
         run: |
