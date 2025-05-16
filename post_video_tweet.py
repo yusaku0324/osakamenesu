@@ -9,27 +9,33 @@ from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 
 # Custom module imports
-# Ensure these paths are correct relative to where this script is run from
-# If post_video_tweet.py is in the root, and bot module is also in root, this should work.
 try:
     from bot.services.twitter_client.driver_factory import create_driver
     from bot.services.twitter_client.cookie_loader import load_cookies
     from bot.services.twitter_client.poster import post_to_twitterdriver
     from bot.utils.log import setup_logger
 except ImportError as e:
-    print(f"Error importing bot modules: {e}")
-    print("Please ensure that the bot module is in the PYTHONPATH or structured correctly.")
-    print("Assuming 'bot' directory is in the same directory as this script.")
-    # Attempt a relative import path if needed, or instruct user to set PYTHONPATH
-    # This is a common issue when script structure isn't flat.
-    # For now, we'll let it fail if the above doesn't work, as fixing import paths
-    # without knowing the exact project structure is hard.
-    # One common way is to add the project root to sys.path if the script is in a subdirectory
-    # import sys
-    # sys.path.append(str(Path(__file__).resolve().parent))
-    # from bot.services.twitter_client.driver_factory import create_driver
-    # ... etc.
-    pass # Let it fail for now if imports are still an issue
+    print(f"Error importing bot modules: {e}. Ensure 'bot' directory is in PYTHONPATH or script is run from project root.")
+    # Fallback basic logger if setup_logger fails
+    logger = logging.getLogger("video_tweeter_fallback")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger.warning("Using fallback basic logging due to import error.")
+    # To make the script runnable for testing even if bot modules are missing, define stubs
+    # This is NOT for production but helps in isolated script development/testing.
+    if "create_driver" not in globals():
+        def create_driver(headless):
+            logger.error("STUB: create_driver called! Bot modules not loaded.")
+            raise NotImplementedError("create_driver stub called")
+    if "load_cookies" not in globals():
+        def load_cookies(driver, path):
+            logger.error("STUB: load_cookies called! Bot modules not loaded.")
+            return False # Simulate failure
+    if "post_to_twitterdriver" not in globals():
+        def post_to_twitterdriver(driver, text, media, reply_to, account, post_id):
+            logger.error("STUB: post_to_twitterdriver called! Bot modules not loaded.")
+            return None # Simulate failure
+else:
+    logger = setup_logger("video_tweeter", "video_tweeter.log")
 
 # --- Constants and Configuration ---
 QUESTIONS_TSV_PATH = Path("questions.tsv")
@@ -39,15 +45,6 @@ VIDEO_MAP_CSV_PATH = Path("video_question_map.csv")
 # TARGET_ACCOUNT_NAME will be dynamic
 COMMON_HASHTAGS = "京都 祇園 水商売 キャバクラ クラブ スカウト 関西 大阪 木屋町 未経験"
 HEADLESS_BROWSER = True # Default, can be overridden by --debug
-
-# Setup logger - if setup_logger fails due to import, a basic logger will be used.
-try:
-    logger = setup_logger("video_tweeter", "video_tweeter.log")
-except NameError: # If setup_logger was not imported
-    logger = logging.getLogger("video_tweeter_fallback")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    logger.warning("setup_logger not available, using basic logging.")
-
 
 # --- Helper Functions ---
 
@@ -97,19 +94,17 @@ def load_posted_log(filepath: Path) -> Set[str]:
     if filepath.exists():
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
-                posted_questions.add(" ".join(line.strip().split())) # Normalize when loading
+                posted_questions.add(" ".join(line.strip().split()))
     logger.info(f"Loaded {len(posted_questions)} posted items from {filepath}")
     return posted_questions
 
 def append_to_posted_log(filepath: Path, question_text: str):
     """Appends a question to the log of posted items."""
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    # Normalize before writing to ensure consistency
     normalized_question_text = " ".join(question_text.strip().split())
     with open(filepath, "a", encoding="utf-8") as f:
         f.write(f"{normalized_question_text}\n")
     logger.info(f"Logged as posted: {normalized_question_text[:50]}... to {filepath}")
-
 
 def select_item_to_post(
     qa_data: Dict[str, str],
@@ -121,23 +116,21 @@ def select_item_to_post(
     Returns a dictionary with 'question', 'answer', 'video_path' or None.
     """
     available_items = []
-    for q_text, answer_text in qa_data.items():
-        # Ensure q_text is normalized here as well, as it's used as a key for video_map
-        normalized_q_text = " ".join(q_text.strip().split())
-        if normalized_q_text in video_map:
+    for q_text_key, answer_text in qa_data.items():
+        normalized_q_key = " ".join(q_text_key.strip().split()) # Key in qa_data is already normalized by load_questions_and_answers
+        if normalized_q_key in video_map:
             available_items.append({
-                "question": normalized_q_text, # Store normalized version
+                "question": normalized_q_key,
                 "answer": answer_text,
-                "video_path": video_map[normalized_q_text]
+                "video_path": video_map[normalized_q_key]
             })
         else:
-            logger.warning(f"Question '{normalized_q_text[:50]}...' found in Q&A but not in video map. Skipping.")
+            logger.warning(f"Question '{normalized_q_key[:50]}...' found in Q&A but not in video map. Skipping.")
 
     if not available_items:
         logger.warning("No items available for posting (Q&A and video map yielded no combined items).")
         return None
 
-    # When checking against posted_log, ensure items from available_items (which have normalized questions) are used
     unposted_items = [item for item in available_items if item["question"] not in posted_log]
     
     selected_item = None
@@ -152,7 +145,7 @@ def select_item_to_post(
         return None
         
     if selected_item:
-        logger.info(f"Selected item to post for account: {selected_item['question'][:50]}...")
+        logger.info(f"Selected item to post: {selected_item['question'][:50]}...")
     return selected_item
 
 async def main_post_video_tweet(account_id: str, headless_mode: bool):
@@ -180,9 +173,9 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
 
     tweet_text = f"{item_to_post['answer']}\n\n{COMMON_HASHTAGS}"
     video_file_path = item_to_post['video_path']
-    question_for_log = item_to_post['question'] # This is already normalized
+    question_for_log = item_to_post['question']
 
-    logger.info(f"Attempting to post for {target_account_name_for_log}: Video='{video_file_path}', Text='{tweet_text[:70]}...'")
+    logger.info(f"Attempting to post for {target_account_name_for_log}: Video='{video_file_path}', Text='{tweet_text[:70]}...'" )
 
     driver = None
     try:
@@ -191,9 +184,7 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
             return
         
         logger.info(f"Creating browser driver (headless: {headless_mode})...")
-        # Ensure create_driver is compatible with how it's called (e.g. async or not)
-        # For this example, assuming create_driver is synchronous. If it's async, it needs `await`.
-        driver = create_driver(headless=headless_mode) 
+        driver = create_driver(headless=headless_mode)
 
         logger.info(f"Loading cookies from {cookie_file_path}...")
         if not load_cookies(driver, str(cookie_file_path)):
@@ -203,7 +194,6 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
         logger.info(f"Calling post_to_twitterdriver for account {target_account_name_for_log}...")
         post_identifier = f"{account_id}_{question_for_log[:20].replace(' ','_')}_{int(time.time())}"
         
-        # Assuming post_to_twitterdriver is synchronous. If async, needs `await`.
         tweet_url_or_id = post_to_twitterdriver(
             driver=driver,
             text=tweet_text,
@@ -250,5 +240,4 @@ if __name__ == "__main__":
 
     Path("logs").mkdir(parents=True, exist_ok=True)
     
-    # Assuming main_post_video_tweet remains async due to Playwright-like nature of poster module
     asyncio.run(main_post_video_tweet(args.account, args.headless))

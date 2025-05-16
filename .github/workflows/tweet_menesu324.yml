@@ -57,7 +57,7 @@ jobs:
           mkdir -p cookies
           echo "$TWITTER_ACCOUNT_COOKIES" > cookies/menesu324_twitter_cookies.json
           echo "Cookie file created at cookies/menesu324_twitter_cookies.json"
-          echo "Cookie file content (first 50 chars): $(head -c 50 cookies/menesu324_twitter_cookies.json)"
+          # echo "Cookie file content (first 50 chars): $(head -c 50 cookies/menesu324_twitter_cookies.json)" # Debug line, remove for production
 
       - name: Run tweet script for @menesu324
         env:
