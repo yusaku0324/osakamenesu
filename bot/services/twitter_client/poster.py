@@ -16,34 +16,30 @@ from bot.services.twitter_client.media_uploader import prepare_media, upload_med
 
 logger = logging.getLogger(__name__)
 
-def navigate_to_compose(driver: WebDriver, timeout: int = 10) -> bool:
-    """
-    投稿画面に移動する
-    
-    Args:
-        driver: WebDriverインスタンス
-        timeout: タイムアウト（秒）
-        
-    Returns:
-        bool: 成功したかどうか
-    """
+TWEET_URL = "https://x.com/compose/tweet"
+
+def navigate_to_compose(driver: WebDriver, timeout: int = 15) -> bool:
     try:
         logger.info("投稿画面に移動します...")
-        driver.get("https://x.com/home")
-        wait = WebDriverWait(driver, timeout)
-        wait.until(
-            lambda d: d.execute_script("return document.readyState") == "complete"
+        logger.info(f"Navigating directly to compose URL: {TWEET_URL}")
+        driver.get(TWEET_URL)
+
+        logger.info("Waiting for tweet textarea to be present...")
+        WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-testid="tweetTextarea_0"]'))
         )
-        driver.get("https://x.com/compose/tweet")
-        wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "[data-testid='tweetButton']")
-            )
-        )
-        return True  # 成功時のみ
+        logger.info("Successfully navigated to compose screen and textarea is present.")
+        return True
     except Exception as e:
-        logger.warning(f"ページの読み込み待機中にエラーが発生しました: {e}")
-        return False  # 失敗時は False
+        logger.warning(f"ページの読み込み待機中にエラーが発生しました (navigate_to_compose): {type(e).__name__} - {str(e)}")
+        logger.debug(traceback.format_exc())
+        try: 
+            if driver:
+                driver.save_screenshot(f"debug_navigate_compose_fail_{int(time.time())}.png")
+                logger.info(f"Saved screenshot: debug_navigate_compose_fail_{int(time.time())}.png")
+        except Exception as se:
+            logger.error(f"Screenshot failed in navigate_to_compose error handler: {se}")
+        return False
 
 def wait_for_tweet_url(driver: WebDriver, timeout: int = 20) -> Optional[str]:
     """
