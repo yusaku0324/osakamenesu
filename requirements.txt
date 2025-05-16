@@ -6,8 +6,8 @@ selenium
 webdriver-manager~=4.0
 undetected-chromedriver
 # schedule # post_video_tweet.pyでは直接使っていないので一旦除外も可
-# openai # 同上
-# pyperclip # 同上
+openai
+pyperclip
 # tweepy # 同上
 pytest # Added for CI tests
 pytest-cov # Added for CI code coverage
