@@ -5,20 +5,20 @@ python-dotenv
 selenium
 webdriver-manager~=4.0
 undetected-chromedriver
-schedule
-openai
-pyperclip
-tweepy
-pytest
-pytest-cov
-pytest-xdist
-black
-isort
-tqdm
-backoff
-jsonschema
+# schedule # post_video_tweet.pyでは直接使っていないので一旦除外も可
+# openai # 同上
+# pyperclip # 同上
+# tweepy # 同上
+# pytest # テスト用なので実行には不要
+# pytest-cov # 同上
+# pytest-xdist # 同上
+# black # フォーマッタなので実行には不要
+# isort # フォーマッタなので実行には不要
+# tqdm # 進捗表示用、post_video_tweet.pyでは未使用
+# backoff # リトライ用、post_video_tweet.pyでは未使用
+# jsonschema # スキーマ検証用、post_video_tweet.pyでは未使用
 Pillow>=9.0
 pytz
-opencv-python
-pytesseract
-twscrape    
+# opencv-python # 画像処理用、post_video_tweet.pyでは直接未使用
+# pytesseract # OCR用、post_video_tweet.pyでは直接未使用
+# twscrape # Twitterスクレイピング用、post_video_tweet.pyでは未使用

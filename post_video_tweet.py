@@ -4,17 +4,34 @@ import random
 import time
 import logging
 import argparse
-import asyncio # Added for async main
+import asyncio
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 
 # Custom module imports
-from bot.services.twitter_client.driver_factory import create_driver
-from bot.services.twitter_client.cookie_loader import load_cookies
-from bot.services.twitter_client.poster import post_to_twitterdriver
-from bot.utils.log import setup_logger
+# Ensure these paths are correct relative to where this script is run from
+# If post_video_tweet.py is in the root, and bot module is also in root, this should work.
+try:
+    from bot.services.twitter_client.driver_factory import create_driver
+    from bot.services.twitter_client.cookie_loader import load_cookies
+    from bot.services.twitter_client.poster import post_to_twitterdriver
+    from bot.utils.log import setup_logger
+except ImportError as e:
+    print(f"Error importing bot modules: {e}")
+    print("Please ensure that the bot module is in the PYTHONPATH or structured correctly.")
+    print("Assuming 'bot' directory is in the same directory as this script.")
+    # Attempt a relative import path if needed, or instruct user to set PYTHONPATH
+    # This is a common issue when script structure isn't flat.
+    # For now, we'll let it fail if the above doesn't work, as fixing import paths
+    # without knowing the exact project structure is hard.
+    # One common way is to add the project root to sys.path if the script is in a subdirectory
+    # import sys
+    # sys.path.append(str(Path(__file__).resolve().parent))
+    # from bot.services.twitter_client.driver_factory import create_driver
+    # ... etc.
+    pass # Let it fail for now if imports are still an issue
 
-# --- Constants and Configuration (to be dynamically set later based on account) ---
+# --- Constants and Configuration ---
 QUESTIONS_TSV_PATH = Path("questions.tsv")
 VIDEO_MAP_CSV_PATH = Path("video_question_map.csv")
 # POSTED_LOG_PATH will be dynamic
@@ -23,9 +40,16 @@ VIDEO_MAP_CSV_PATH = Path("video_question_map.csv")
 COMMON_HASHTAGS = "京都 祇園 水商売 キャバクラ クラブ スカウト 関西 大阪 木屋町 未経験"
 HEADLESS_BROWSER = True # Default, can be overridden by --debug
 
-logger = setup_logger("video_tweeter", "video_tweeter.log") # General logger
+# Setup logger - if setup_logger fails due to import, a basic logger will be used.
+try:
+    logger = setup_logger("video_tweeter", "video_tweeter.log")
+except NameError: # If setup_logger was not imported
+    logger = logging.getLogger("video_tweeter_fallback")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger.warning("setup_logger not available, using basic logging.")
 
-# --- Helper Functions (remain mostly the same) ---
+
+# --- Helper Functions ---
 
 def load_questions_and_answers(filepath: Path) -> Dict[str, str]:
     """Loads Q&A from a TSV file (Question\tAnswer)."""
@@ -73,22 +97,23 @@ def load_posted_log(filepath: Path) -> Set[str]:
     if filepath.exists():
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
-                posted_questions.add(line.strip())
+                posted_questions.add(" ".join(line.strip().split())) # Normalize when loading
     logger.info(f"Loaded {len(posted_questions)} posted items from {filepath}")
     return posted_questions
 
 def append_to_posted_log(filepath: Path, question_text: str):
     """Appends a question to the log of posted items."""
-    # Ensure directory for log file exists
     filepath.parent.mkdir(parents=True, exist_ok=True)
+    # Normalize before writing to ensure consistency
+    normalized_question_text = " ".join(question_text.strip().split())
     with open(filepath, "a", encoding="utf-8") as f:
-        f.write(f"{question_text.strip()}\n")
-    logger.info(f"Logged as posted: {question_text[:50]}... to {filepath}")
+        f.write(f"{normalized_question_text}\n")
+    logger.info(f"Logged as posted: {normalized_question_text[:50]}... to {filepath}")
 
 
 def select_item_to_post(
-    qa_data: Dict[str, str], 
-    video_map: Dict[str, str], 
+    qa_data: Dict[str, str],
+    video_map: Dict[str, str],
     posted_log: Set[str]
 ) -> Optional[Dict[str, str]]:
     """
@@ -97,19 +122,22 @@ def select_item_to_post(
     """
     available_items = []
     for q_text, answer_text in qa_data.items():
-        if q_text in video_map:
+        # Ensure q_text is normalized here as well, as it's used as a key for video_map
+        normalized_q_text = " ".join(q_text.strip().split())
+        if normalized_q_text in video_map:
             available_items.append({
-                "question": q_text,
+                "question": normalized_q_text, # Store normalized version
                 "answer": answer_text,
-                "video_path": video_map[q_text]
+                "video_path": video_map[normalized_q_text]
             })
         else:
-            logger.warning(f"Question '{q_text[:50]}...' found in Q&A but not in video map. Skipping.")
+            logger.warning(f"Question '{normalized_q_text[:50]}...' found in Q&A but not in video map. Skipping.")
 
     if not available_items:
         logger.warning("No items available for posting (Q&A and video map yielded no combined items).")
         return None
 
+    # When checking against posted_log, ensure items from available_items (which have normalized questions) are used
     unposted_items = [item for item in available_items if item["question"] not in posted_log]
     
     selected_item = None
@@ -128,9 +156,8 @@ def select_item_to_post(
     return selected_item
 
 async def main_post_video_tweet(account_id: str, headless_mode: bool):
-    # Derive account-specific paths
     cookie_file_path = Path(f"cookies/{account_id}_twitter_cookies.json")
-    posted_log_path = Path(f"logs/posted_video_tweets_{account_id}.log") # Store logs in a logs subdir
+    posted_log_path = Path(f"logs/posted_video_tweets_{account_id}.log")
     target_account_name_for_log = f"@{account_id}"
 
     logger.info(f"--- Starting Video Tweet Posting Script for account: {target_account_name_for_log} ---")
@@ -139,7 +166,7 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
 
     qa_data = load_questions_and_answers(QUESTIONS_TSV_PATH)
     video_map = load_video_map(VIDEO_MAP_CSV_PATH)
-    posted_log = load_posted_log(posted_log_path) # Use account-specific log path
+    posted_log = load_posted_log(posted_log_path)
 
     if not qa_data or not video_map:
         logger.error("Essential data (Q&A or Video Map) could not be loaded. Exiting.")
@@ -153,7 +180,7 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
 
     tweet_text = f"{item_to_post['answer']}\n\n{COMMON_HASHTAGS}"
     video_file_path = item_to_post['video_path']
-    question_for_log = item_to_post['question']
+    question_for_log = item_to_post['question'] # This is already normalized
 
     logger.info(f"Attempting to post for {target_account_name_for_log}: Video='{video_file_path}', Text='{tweet_text[:70]}...'")
 
@@ -164,7 +191,9 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
             return
         
         logger.info(f"Creating browser driver (headless: {headless_mode})...")
-        driver = create_driver(headless=headless_mode)
+        # Ensure create_driver is compatible with how it's called (e.g. async or not)
+        # For this example, assuming create_driver is synchronous. If it's async, it needs `await`.
+        driver = create_driver(headless=headless_mode) 
 
         logger.info(f"Loading cookies from {cookie_file_path}...")
         if not load_cookies(driver, str(cookie_file_path)):
@@ -174,18 +203,19 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
         logger.info(f"Calling post_to_twitterdriver for account {target_account_name_for_log}...")
         post_identifier = f"{account_id}_{question_for_log[:20].replace(' ','_')}_{int(time.time())}"
         
+        # Assuming post_to_twitterdriver is synchronous. If async, needs `await`.
         tweet_url_or_id = post_to_twitterdriver(
             driver=driver,
             text=tweet_text,
             media=video_file_path, 
             reply_to=None,
-            account=target_account_name_for_log, # Pass the account name for logging within poster.py
+            account=target_account_name_for_log,
             post_id=post_identifier 
         )
 
         if tweet_url_or_id:
             logger.info(f"Successfully posted for {target_account_name_for_log}! Outcome: {tweet_url_or_id}")
-            append_to_posted_log(posted_log_path, question_for_log) # Use account-specific log path
+            append_to_posted_log(posted_log_path, question_for_log)
         else:
             logger.error(f"Posting failed for {target_account_name_for_log} or did not return a success indicator.")
 
@@ -195,7 +225,10 @@ async def main_post_video_tweet(account_id: str, headless_mode: bool):
     finally:
         if driver:
             logger.info(f"Closing browser driver for {target_account_name_for_log}.")
-            driver.quit()
+            try:
+                driver.quit()
+            except Exception as e:
+                logger.error(f"Error quitting driver: {e}")
         logger.info(f"--- Video Tweet Posting Script Finished for account: {target_account_name_for_log} ---")
 
 if __name__ == "__main__":
@@ -215,7 +248,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Ensure the logs directory exists for account-specific logs
     Path("logs").mkdir(parents=True, exist_ok=True)
-
-    asyncio.run(main_post_video_tweet(args.account, args.headless)) 
+    
+    # Assuming main_post_video_tweet remains async due to Playwright-like nature of poster module
+    asyncio.run(main_post_video_tweet(args.account, args.headless))
