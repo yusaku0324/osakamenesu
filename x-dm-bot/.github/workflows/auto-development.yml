@@ -1,0 +1,68 @@
+name: 自動開発パイプライン
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 6時間ごとに実行
+  workflow_dispatch:  # 手動実行も可能
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/auto_enhance.py'
+      - '.github/workflows/auto-development.yml'
+
+jobs:
+  auto-develop:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Python セットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: 依存関係のインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black flake8
+      
+      - name: 自動機能拡張の実行
+        run: |
+          python scripts/auto_enhance.py
+      
+      - name: コード品質チェック
+        run: |
+          black --check .
+          flake8 . --max-line-length=100
+      
+      - name: テストの実行
+        run: |
+          python -m pytest tests/ -v --cov=./ --cov-report=xml
+      
+      - name: 変更のコミット
+        run: |
+          git config --global user.name "Auto Developer Bot"
+          git config --global user.email "bot@x-dm-bot.com"
+          git add .
+          git diff --staged --quiet || git commit -m "🤖 自動機能追加: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push || echo "変更なし"
+      
+      - name: 品質レポートの生成
+        if: always()
+        run: |
+          python scripts/generate_quality_report.py
+      
+      - name: Slack 通知
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: '自動開発パイプラインが完了しました'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
