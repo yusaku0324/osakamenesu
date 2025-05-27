@@ -1,0 +1,183 @@
+name: Claude Code Analyzer
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  analyze:
+    runs-on: self-hosted
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '@claude'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴を取得
+
+      - name: Analyze Code Request
+        id: analyze
+        run: |
+          # リクエストを抽出
+          case "${{ github.event_name }}" in
+            issue_comment)
+              REQUEST="${{ github.event.comment.body }}"
+              CONTEXT_TYPE="issue"
+              CONTEXT_NUM="${{ github.event.issue.number }}"
+              ;;
+            pull_request)
+              REQUEST="${{ github.event.pull_request.body }}"
+              CONTEXT_TYPE="pr"
+              CONTEXT_NUM="${{ github.event.pull_request.number }}"
+              # PR の場合は変更されたファイルを取得
+              git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} > changed_files.txt
+              ;;
+            workflow_dispatch)
+              REQUEST="analyze code"
+              CONTEXT_TYPE="manual"
+              CONTEXT_NUM="0"
+              ;;
+          esac
+          
+          # @claudeメンションを削除
+          REQUEST=$(echo "$REQUEST" | sed 's/@claude//g' | xargs)
+          
+          echo "Request: $REQUEST"
+          
+          # レスポンスを生成
+          RESPONSE=""
+          
+          # コード解析のリクエストかチェック
+          if echo "$REQUEST" | grep -Ei "コード|code|問題|issue|analyze|分析|解析|見|check|review"; then
+            echo "Code analysis requested..."
+            
+            # ファイル名が含まれているかチェック
+            FILE_PATTERN=$(echo "$REQUEST" | grep -oE '[a-zA-Z0-9_/-]+\.(py|js|ts|tsx|jsx|yml|yaml|sh|md|json)' || echo "")
+            
+            if [ -n "$FILE_PATTERN" ]; then
+              # 特定のファイルを解析
+              if [ -f "$FILE_PATTERN" ]; then
+                RESPONSE="📄 **ファイル解析: $FILE_PATTERN**\n\n"
+                
+                # ファイルの基本情報
+                FILE_SIZE=$(wc -c < "$FILE_PATTERN")
+                FILE_LINES=$(wc -l < "$FILE_PATTERN")
+                RESPONSE="${RESPONSE}📊 基本情報:\n"
+                RESPONSE="${RESPONSE}- サイズ: $FILE_SIZE bytes\n"
+                RESPONSE="${RESPONSE}- 行数: $FILE_LINES lines\n\n"
+                
+                # ファイルの内容を表示（最初の30行）
+                RESPONSE="${RESPONSE}📝 内容（最初の30行）:\n\`\`\`\n"
+                head -30 "$FILE_PATTERN" > /tmp/file_content.txt
+                FILE_CONTENT=$(cat /tmp/file_content.txt | sed 's/`/\\`/g')
+                RESPONSE="${RESPONSE}${FILE_CONTENT}\n\`\`\`\n\n"
+                
+                # 簡易的なコード品質チェック
+                RESPONSE="${RESPONSE}🔍 簡易チェック:\n"
+                
+                # TODO/FIXMEのチェック
+                TODO_COUNT=$(grep -i "TODO\|FIXME" "$FILE_PATTERN" | wc -l || echo "0")
+                if [ "$TODO_COUNT" -gt 0 ]; then
+                  RESPONSE="${RESPONSE}- ⚠️ TODO/FIXMEが${TODO_COUNT}個見つかりました\n"
+                fi
+                
+                # 長い行のチェック
+                LONG_LINES=$(awk 'length > 120' "$FILE_PATTERN" | wc -l || echo "0")
+                if [ "$LONG_LINES" -gt 0 ]; then
+                  RESPONSE="${RESPONSE}- ⚠️ 120文字を超える行が${LONG_LINES}行あります\n"
+                fi
+                
+              else
+                RESPONSE="❌ ファイル '$FILE_PATTERN' が見つかりませんでした。"
+              fi
+              
+            elif [ "$CONTEXT_TYPE" = "pr" ] && [ -f "changed_files.txt" ]; then
+              # PRの変更ファイルを解析
+              RESPONSE="🔄 **PR #$CONTEXT_NUM の変更ファイル解析**\n\n"
+              RESPONSE="${RESPONSE}📝 変更されたファイル:\n"
+              
+              while IFS= read -r file; do
+                if [ -f "$file" ]; then
+                  RESPONSE="${RESPONSE}- ✅ $file\n"
+                else
+                  RESPONSE="${RESPONSE}- ❌ $file (削除済み)\n"
+                fi
+              done < changed_files.txt
+              
+              # 変更の統計
+              ADDITIONS=$(git diff --shortstat origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo "0")
+              DELETIONS=$(git diff --shortstat origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo "0")
+              
+              RESPONSE="${RESPONSE}\n📊 変更統計:\n"
+              RESPONSE="${RESPONSE}- 追加: +${ADDITIONS} 行\n"
+              RESPONSE="${RESPONSE}- 削除: -${DELETIONS} 行\n"
+              
+            else
+              # プロジェクト全体の概要
+              RESPONSE="📂 **プロジェクト概要**\n\n"
+              
+              # 主要なファイルタイプをカウント
+              RESPONSE="${RESPONSE}📊 ファイル統計:\n"
+              PY_COUNT=$(find . -name "*.py" -type f | wc -l || echo "0")
+              JS_COUNT=$(find . -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -type f | wc -l || echo "0")
+              YML_COUNT=$(find . -name "*.yml" -o -name "*.yaml" -type f | wc -l || echo "0")
+              
+              RESPONSE="${RESPONSE}- Python: ${PY_COUNT} files\n"
+              RESPONSE="${RESPONSE}- JavaScript/TypeScript: ${JS_COUNT} files\n"
+              RESPONSE="${RESPONSE}- YAML: ${YML_COUNT} files\n\n"
+              
+              # 最近変更されたファイル
+              RESPONSE="${RESPONSE}🕐 最近変更されたファイル:\n"
+              find . -type f -name "*.py" -o -name "*.js" -o -name "*.ts" | head -5 | while read -r file; do
+                RESPONSE="${RESPONSE}- $file\n"
+              done
+            fi
+            
+          else
+            # 通常の応答
+            if echo "$REQUEST" | grep -qi "hello\|hi\|こんにちは"; then
+              RESPONSE="こんにちは！コード解析が必要な場合は、ファイル名を指定するか「コードを見て」と言ってください。\n\n例:\n- @claude bot/main.py を見て\n- @claude このPRのコードをチェックして"
+            else
+              RESPONSE="リクエストを受け付けました。\n\nコード解析機能の使い方:\n- 特定のファイル: @claude [ファイル名] を見て\n- PR全体: PRで @claude コードをレビューして\n- プロジェクト概要: @claude プロジェクトを分析して"
+            fi
+          fi
+          
+          # 特殊文字をエスケープ
+          RESPONSE=$(echo "$RESPONSE" | sed 's/\\/\\\\/g' | sed 's/`/\\`/g' | sed 's/\$/\\$/g' | sed "s/'/\\\\'/g" | sed 's/"/\\"/g')
+          
+          # 応答を保存
+          echo "CLAUDE_RESPONSE<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post Analysis Response
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const response = `${{ steps.analyze.outputs.CLAUDE_RESPONSE }}`;
+            
+            let issueNumber;
+            const eventName = context.eventName;
+            
+            if (eventName === 'issue_comment') {
+              issueNumber = context.issue.number;
+            } else if (eventName === 'pull_request') {
+              issueNumber = context.payload.pull_request.number;
+            }
+            
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `### Claude Code Analysis 🔍\n\n${response}\n\n---\n_Code Analyzer (Local Mode - No API Required)_`
+              });
+            }
