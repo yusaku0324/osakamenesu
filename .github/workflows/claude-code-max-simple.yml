@@ -1,0 +1,28 @@
+name: Claude Code Max Simple
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  test-claude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test Claude API
+        run: |
+          echo "Testing Claude API..."
+          curl -s -X POST \
+            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            https://api.anthropic.com/v1/messages \
+            -d '{
+              "model": "claude-3-haiku-20240307",
+              "max_tokens": 100,
+              "messages": [{"role": "user", "content": "Say hello in JSON format"}]
+            }' | jq -r '.content[0].text' || echo "API call failed"
