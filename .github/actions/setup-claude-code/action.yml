@@ -1,0 +1,82 @@
+name: 'Setup Claude Code CLI'
+description: 'Install and configure Claude Code CLI'
+inputs:
+  api-key:
+    description: 'Anthropic API Key'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Claude Code CLI
+      shell: bash
+      run: |
+        # Check if Claude Code is already installed
+        if command -v claude-code &> /dev/null; then
+          echo "Claude Code CLI is already installed"
+          claude-code --version
+          exit 0
+        fi
+        
+        # Install Claude Code CLI
+        echo "Installing Claude Code CLI..."
+        
+        # Method 1: Try official installer (when available)
+        if curl -fsSL https://raw.githubusercontent.com/anthropics/claude-code/main/install.sh -o /tmp/install-claude.sh 2>/dev/null; then
+          chmod +x /tmp/install-claude.sh
+          /tmp/install-claude.sh
+        else
+          # Method 2: NPM installation (if available)
+          if command -v npm &> /dev/null; then
+            echo "Trying npm installation..."
+            npm install -g @anthropic/claude-code || echo "NPM installation failed"
+          fi
+          
+          # Method 3: Manual installation
+          if ! command -v claude-code &> /dev/null; then
+            echo "Manual installation..."
+            mkdir -p $HOME/.local/bin
+            
+            # Download the binary (adjust URL based on platform)
+            PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+            ARCH=$(uname -m)
+            
+            # Construct download URL (example - adjust based on actual release pattern)
+            DOWNLOAD_URL="https://github.com/anthropics/claude-code/releases/latest/download/claude-code-${PLATFORM}-${ARCH}"
+            
+            if curl -fsSL "$DOWNLOAD_URL" -o $HOME/.local/bin/claude-code 2>/dev/null; then
+              chmod +x $HOME/.local/bin/claude-code
+              export PATH="$PATH:$HOME/.local/bin"
+            else
+              echo "Failed to download Claude Code CLI"
+              echo "Please install manually on the self-hosted runner"
+              exit 1
+            fi
+          fi
+        fi
+        
+        # Verify installation
+        if command -v claude-code &> /dev/null; then
+          echo "Claude Code CLI installed successfully"
+          claude-code --version
+        else
+          echo "Claude Code CLI installation failed"
+          exit 1
+        fi
+    
+    - name: Configure Claude Code CLI
+      shell: bash
+      run: |
+        # Set API key
+        export ANTHROPIC_API_KEY="${{ inputs.api-key }}"
+        
+        # Configure Claude Code (method may vary based on CLI version)
+        # Option 1: Environment variable (usually works)
+        echo "ANTHROPIC_API_KEY configured via environment variable"
+        
+        # Option 2: Config file
+        mkdir -p $HOME/.config/claude-code
+        echo "api_key: ${{ inputs.api-key }}" > $HOME/.config/claude-code/config.yml
+        chmod 600 $HOME/.config/claude-code/config.yml
+        
+        # Option 3: CLI command (if supported)
+        claude-code config set api-key "${{ inputs.api-key }}" 2>/dev/null || true

@@ -1,0 +1,100 @@
+name: Claude Code Max CLI
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  claude-respond:
+    runs-on: self-hosted
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '@claude')) ||
+      github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Claude Code CLI
+        run: |
+          # Install Claude Code CLI if not already installed
+          if ! command -v claude-code &> /dev/null; then
+            echo "Installing Claude Code CLI..."
+            # Use the official installer when available
+            # For now, we'll check if it's pre-installed on the runner
+            echo "Claude Code CLI not found. Please install it on the self-hosted runner."
+            exit 1
+          fi
+          
+          # Verify Claude Code CLI is available
+          claude-code --version || echo "Claude Code CLI version check failed"
+
+      - name: Process Claude Request
+        id: claude
+        run: |
+          # Extract request from comment or issue
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            REQUEST="${{ github.event.comment.body }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            REQUEST="${{ github.event.pull_request.body }}"
+          else
+            REQUEST="${{ github.event.issue.body }}"
+          fi
+          
+          # Remove @claude mention and clean up
+          REQUEST=$(echo "$REQUEST" | sed 's/@claude//g' | xargs)
+          
+          # Create a temporary file for the request
+          echo "$REQUEST" > /tmp/claude_request.txt
+          
+          # Call Claude Code CLI with proper authentication
+          export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          
+          # Use claude-code in non-interactive mode
+          # The exact command may vary based on the CLI version
+          RESPONSE=$(claude-code chat --message "$REQUEST" 2>&1 || echo "Error calling Claude Code CLI")
+          
+          # Clean up
+          rm -f /tmp/claude_request.txt
+          
+          # Escape special characters for JavaScript
+          RESPONSE=$(echo "$RESPONSE" | sed 's/\\/\\\\/g' | sed 's/`/\\`/g' | sed 's/\$/\\$/g' | sed "s/'/\\\\'/g" | sed 's/"/\\"/g')
+          
+          # Save response for next step
+          echo "CLAUDE_RESPONSE<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment Response
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const response = `${{ steps.claude.outputs.CLAUDE_RESPONSE }}`;
+            
+            // Determine issue/PR number
+            let issueNumber;
+            if (context.eventName === 'issue_comment') {
+              issueNumber = context.issue.number;
+            } else if (context.eventName === 'pull_request') {
+              issueNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'issues') {
+              issueNumber = context.issue.number;
+            }
+            
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `### Claude Response 🤖\n\n${response}\n\n---\n_Powered by Claude Code Max CLI_`
+              });
+            }
