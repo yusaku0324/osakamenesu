@@ -1,0 +1,48 @@
+{
+  "rate_limits": {
+    "max_dms_per_hour": 20,
+    "user_cooldown_hours": 24
+  },
+  "exclude_list": [
+    "verified",
+    "twitter",
+    "x"
+  ],
+  "campaigns": [
+    {
+      "name": "AI Discussion Campaign",
+      "keywords": ["AI", "人工知能", "ChatGPT", "Claude"],
+      "message_templates": [
+        "こんにちは @{username}さん！「{keyword}」についての投稿を拝見しました。とても興味深い内容でした。もしよろしければ、この話題についてもう少し詳しくお聞きできますか？",
+        "はじめまして！{time_ago}秒前の「{keyword}」に関する投稿、素晴らしいですね。私も同じ分野に興味があります。情報交換させていただけると嬉しいです！",
+        "@{username}さん、投稿拝見しました：「{tweet_text}」\nこの視点、とても新鮮でした！もしお時間あれば、詳しくお話し聞かせていただけませんか？"
+      ],
+      "max_dms_per_hour": 10,
+      "check_interval": 300,
+      "active": true
+    },
+    {
+      "name": "Tech Networking Campaign",
+      "keywords": ["プログラミング", "開発者", "エンジニア", "技術"],
+      "message_templates": [
+        "こんにちは！{keyword}についての投稿、とても参考になりました。私も技術系の仕事をしているので、ぜひ繋がらせていただけると嬉しいです。",
+        "@{username}さん、素晴らしい技術的洞察ですね！もしよろしければ、今後も情報交換させていただけませんか？"
+      ],
+      "max_dms_per_hour": 5,
+      "check_interval": 600,
+      "recipient_list": null,
+      "active": false
+    }
+  ],
+  "browser_settings": {
+    "window_size": [1280, 800],
+    "start_maximized": false,
+    "headless": false
+  },
+  "delays": {
+    "min_action_delay": 2,
+    "max_action_delay": 5,
+    "min_typing_delay": 0.05,
+    "max_typing_delay": 0.3
+  }
+}

@@ -1,0 +1,28 @@
+name: Test Claude Code Simple
+on:
+  workflow_dispatch:
+
+jobs:
+  test-claude:
+    runs-on: self-hosted
+    steps:
+      - name: Check Claude CLI
+        run: |
+          echo "🤖 Testing Claude Code CLI..."
+          echo "=========================="
+          claude --version
+          echo ""
+          echo "✅ Claude Code CLI is working!"
+          
+      - name: System Info
+        run: |
+          echo "📊 System Information:"
+          echo "OS: $(uname -s)"
+          echo "Architecture: $(uname -m)"
+          echo "Hostname: $(hostname)"
+          echo "User: $USER"
+          
+      - name: Test Claude Help
+        run: |
+          echo "📖 Claude CLI Help:"
+          claude --help | head -20

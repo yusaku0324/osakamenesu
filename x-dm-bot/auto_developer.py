@@ -8,11 +8,12 @@ import argparse
 import json
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 import threading
 import queue
+import psutil
 
 from scripts.auto_enhance import AutoDeveloper
 from scripts.quality_monitor import QualityGate
@@ -27,9 +28,10 @@ logger = logging.getLogger(__name__)
 class AutoDevelopmentManager:
     """自動開発プロセス全体を管理"""
     
-    def __init__(self, mode: str = "development", target: str = "mvp"):
+    def __init__(self, mode: str = "development", target: str = "mvp", instance: int = 0):
         self.mode = mode
         self.target = target
+        self.instance = instance
         self.project_root = Path.cwd()
         self.developer = AutoDeveloper()
         self.quality_gate = QualityGate()
@@ -39,8 +41,35 @@ class AutoDevelopmentManager:
             "current_task": None,
             "completed_features": [],
             "quality_score": 0,
-            "last_update": None
+            "last_update": None,
+            "instance_id": instance,
+            "turbo_mode": mode == "turbo"
         }
+        
+        # ターボモードの場合、特別な初期化
+        if mode == "turbo":
+            self._init_turbo_mode()
+    
+    def _init_turbo_mode(self):
+        """ターボモードの初期化"""
+        logger.info(f"🔥 ターボモード初期化 - インスタンス {self.instance}")
+        
+        # ターボ機能キューを読み込み
+        turbo_file = self.project_root / "turbo_features.json"
+        if turbo_file.exists():
+            with open(turbo_file, 'r') as f:
+                data = json.load(f)
+                for feature in data.get('turbo_queue', []):
+                    # インスタンスごとに異なる機能を割り当て
+                    if self.instance == 0 or (feature.get('priority', 1) == 1):
+                        self.task_queue.put({
+                            "id": feature['name'],
+                            "name": feature['description'],
+                            "priority": feature['priority'],
+                            "tasks": [f"ターボ実装: {feature['description']}"],
+                            "turbo": True,
+                            "estimated_time": feature['completion_time']
+                        })
         
     def start(self):
         """自動開発プロセスを開始"""
@@ -98,7 +127,9 @@ class AutoDevelopmentManager:
                     self.status["current_task"] = None
                     
                 # 開発間隔
-                if self.mode == "production":
+                if self.mode == "turbo":
+                    time.sleep(30)    # ターボモードでは30秒ごと！
+                elif self.mode == "production":
                     time.sleep(3600)  # 本番モードでは1時間ごと
                 else:
                     time.sleep(300)   # 開発モードでは5分ごと
@@ -160,7 +191,6 @@ class AutoDevelopmentManager:
     
     def _collect_metrics(self) -> Dict:
         """システムメトリクスを収集"""
-        import psutil
         
         return {
             "cpu_usage": psutil.cpu_percent(interval=1),
@@ -222,7 +252,7 @@ class AutoDevelopmentManager:
         try:
             from monitor_dashboard import create_dashboard_app
             app = create_dashboard_app(self)
-            app.run_server(host='0.0.0.0', port=9000, debug=False)
+            app.run(host='0.0.0.0', port=9000, debug=False)
         except ImportError:
             logger.warning("ダッシュボードモジュールが見つかりません")
     
@@ -251,7 +281,7 @@ def main():
     parser = argparse.ArgumentParser(description="X DM Bot 自動開発マネージャー")
     parser.add_argument(
         "--mode",
-        choices=["development", "production"],
+        choices=["development", "production", "turbo"],
         default="development",
         help="実行モード"
     )
@@ -266,11 +296,17 @@ def main():
         type=str,
         help="特定のタスクを追加"
     )
+    parser.add_argument(
+        "--instance",
+        type=int,
+        default=0,
+        help="インスタンス番号（ターボモード用）"
+    )
     
     args = parser.parse_args()
     
     # マネージャーを初期化
-    manager = AutoDevelopmentManager(mode=args.mode, target=args.target)
+    manager = AutoDevelopmentManager(mode=args.mode, target=args.target, instance=args.instance)
     
     # カスタムタスクがある場合は追加
     if args.task:
