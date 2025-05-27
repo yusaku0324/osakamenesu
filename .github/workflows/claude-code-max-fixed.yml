@@ -49,6 +49,9 @@ jobs:
               \"messages\": [{\"role\": \"user\", \"content\": \"$REQUEST\"}]
             }" | jq -r '.content[0].text // "Error calling Claude API"')
           
+          # Escape special characters for JavaScript
+          RESPONSE=$(echo "$RESPONSE" | sed 's/\\/\\\\/g' | sed 's/`/\\`/g' | sed 's/\$/\\$/g' | sed "s/'/\\\\'/g" | sed 's/"/\\"/g')
+          
           # Save response for next step
           echo "CLAUDE_RESPONSE<<EOF" >> $GITHUB_OUTPUT
           echo "$RESPONSE" >> $GITHUB_OUTPUT
@@ -59,9 +62,22 @@ jobs:
         with:
           script: |
             const response = `${{ steps.claude.outputs.CLAUDE_RESPONSE }}`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `### Claude Response 🤖\n\n${response}\n\n---\n_Powered by Claude API_`
-            });
+            
+            // Determine issue/PR number
+            let issueNumber;
+            if (context.eventName === 'issue_comment') {
+              issueNumber = context.issue.number;
+            } else if (context.eventName === 'pull_request') {
+              issueNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'issues') {
+              issueNumber = context.issue.number;
+            }
+            
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `### Claude Response 🤖\n\n${response}\n\n---\n_Powered by Claude API_`
+              });
+            }
