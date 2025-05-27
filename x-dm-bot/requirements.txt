@@ -3,11 +3,11 @@ selenium==4.18.1
 undetected-chromedriver==3.5.5
 python-dotenv==1.0.1
 schedule==1.2.0
-cryptography==42.0.2
+cryptography==42.0.8
 
 # Web GUI dependencies
 flask==3.0.0
-flask-cors==4.0.0
+flask-cors==4.0.1
 
 # Chrome driver management
 webdriver-manager==4.0.1
