@@ -6,11 +6,18 @@ jobs:
   test-claude:
     runs-on: self-hosted
     steps:
+      - name: Setup PATH
+        run: |
+          echo "Setting up PATH for Claude CLI..."
+          echo "PATH=$PATH:/Users/yusaku/.npm-global/bin" >> $GITHUB_ENV
+          
       - name: Check Claude CLI
         run: |
           echo "🤖 Testing Claude Code CLI..."
           echo "=========================="
-          claude --version
+          echo "PATH: $PATH"
+          which claude || echo "Claude not found in PATH"
+          /Users/yusaku/.npm-global/bin/claude --version
           echo ""
           echo "✅ Claude Code CLI is working!"
           
@@ -25,4 +32,4 @@ jobs:
       - name: Test Claude Help
         run: |
           echo "📖 Claude CLI Help:"
-          claude --help | head -20
+          /Users/yusaku/.npm-global/bin/claude --help | head -20
