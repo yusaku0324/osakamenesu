@@ -1,0 +1,82 @@
+name: Claude Code Automation
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task for Claude Code'
+        required: true
+        default: 'check'
+        type: choice
+        options:
+          - check     # コードレビュー
+          - fix       # バグ修正
+          - refactor  # リファクタリング
+          - test      # テスト追加
+          - docs      # ドキュメント更新
+      target:
+        description: 'Target files or directory'
+        required: false
+        default: '.'
+      prompt:
+        description: 'Additional instructions for Claude'
+        required: false
+
+jobs:
+  claude-automation:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Claude CLI
+        run: |
+          echo "PATH=$PATH:/Users/yusaku/.npm-global/bin" >> $GITHUB_ENV
+          
+      - name: Run Claude Code Task
+        run: |
+          echo "🤖 Running Claude Code Task: ${{ github.event.inputs.task }}"
+          echo "📁 Target: ${{ github.event.inputs.target }}"
+          echo "📝 Additional instructions: ${{ github.event.inputs.prompt }}"
+          echo "================================"
+          
+          # タスクに応じたコマンドを実行
+          case "${{ github.event.inputs.task }}" in
+            "check")
+              echo "Running code review..."
+              /Users/yusaku/.npm-global/bin/claude --print "Review the code in ${{ github.event.inputs.target }} and suggest improvements. ${{ github.event.inputs.prompt }}"
+              ;;
+            "fix")
+              echo "Running bug fix..."
+              /Users/yusaku/.npm-global/bin/claude --print "Find and fix bugs in ${{ github.event.inputs.target }}. ${{ github.event.inputs.prompt }}"
+              ;;
+            "refactor")
+              echo "Running refactoring..."
+              /Users/yusaku/.npm-global/bin/claude --print "Refactor the code in ${{ github.event.inputs.target }} to improve readability and performance. ${{ github.event.inputs.prompt }}"
+              ;;
+            "test")
+              echo "Adding tests..."
+              /Users/yusaku/.npm-global/bin/claude --print "Add comprehensive tests for ${{ github.event.inputs.target }}. ${{ github.event.inputs.prompt }}"
+              ;;
+            "docs")
+              echo "Updating documentation..."
+              /Users/yusaku/.npm-global/bin/claude --print "Update or create documentation for ${{ github.event.inputs.target }}. ${{ github.event.inputs.prompt }}"
+              ;;
+          esac
+          
+      - name: Save Claude Output
+        if: always()
+        run: |
+          mkdir -p claude-outputs
+          DATE=$(date +%Y%m%d_%H%M%S)
+          echo "Task: ${{ github.event.inputs.task }}" > claude-outputs/output_${DATE}.txt
+          echo "Target: ${{ github.event.inputs.target }}" >> claude-outputs/output_${DATE}.txt
+          echo "Prompt: ${{ github.event.inputs.prompt }}" >> claude-outputs/output_${DATE}.txt
+          echo "---" >> claude-outputs/output_${DATE}.txt
+          # ここに実際の出力を追加
+          
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-output-${{ github.run_number }}
+          path: claude-outputs/

@@ -1,0 +1,134 @@
+name: Claude Code Max
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task for Claude'
+        required: true
+        default: 'analyze'
+        type: choice
+        options:
+          - analyze
+          - review
+          - fix
+          - test
+      target:
+        description: 'Target files or directory'
+        required: false
+        default: '.'
+      model:
+        description: 'Claude model to use'
+        required: false
+        default: 'claude-3-opus-20240229'
+        type: choice
+        options:
+          - claude-3-opus-20240229
+          - claude-3-sonnet-20240229
+          - claude-3-haiku-20240307
+  
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  claude-max:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        run: |
+          echo "ANTHROPIC_API_KEY is ${ANTHROPIC_API_KEY:0:10}..." 
+          echo "PROVIDERS=anthropic" >> $GITHUB_ENV
+          echo "MAX_TOKENS=4096" >> $GITHUB_ENV
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      
+      - name: Test API connection
+        run: |
+          echo "Testing Anthropic API connection..."
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
+            -H "anthropic-version: 2023-06-01" \
+            https://api.anthropic.com/v1/models || echo "API test failed"
+      
+      - name: Install Claude CLI
+        run: |
+          # Claude CLI のインストール
+          curl -fsSL https://cli.claude.ai/install.sh | sh
+          echo "$HOME/.claude/bin" >> $GITHUB_PATH
+          
+      - name: Verify Claude CLI
+        run: |
+          claude --version || echo "Claude CLI not found"
+          
+      - name: Run Claude task (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Running Claude ${{ github.event.inputs.task }} on ${{ github.event.inputs.target }}"
+          
+          case "${{ github.event.inputs.task }}" in
+            "analyze")
+              claude --model ${{ github.event.inputs.model }} \
+                "Analyze the code in ${{ github.event.inputs.target }} and provide insights"
+              ;;
+            "review")
+              claude --model ${{ github.event.inputs.model }} \
+                "Review the code in ${{ github.event.inputs.target }} for best practices"
+              ;;
+            "fix")
+              claude --model ${{ github.event.inputs.model }} \
+                "Identify and fix issues in ${{ github.event.inputs.target }}"
+              ;;
+            "test")
+              claude --model ${{ github.event.inputs.model }} \
+                "Generate tests for ${{ github.event.inputs.target }}"
+              ;;
+          esac
+          
+      - name: Process comment (issue_comment)
+        if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Processing comment from @${{ github.event.comment.user.login }}"
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          
+          # @claude を削除してコマンドを抽出
+          CLAUDE_COMMAND=${COMMENT_BODY#*@claude }
+          
+          # Claude で処理
+          RESPONSE=$(claude --model claude-3-opus-20240229 "$CLAUDE_COMMAND" 2>&1)
+          
+          # 結果をコメントとして投稿
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "### Claude Response
+
+$RESPONSE
+
+---
+_Processed by Claude Code Max_"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-logs-${{ github.run_number }}
+          path: |
+            *.log
+            claude-output-*
