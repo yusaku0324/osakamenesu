@@ -37,9 +37,8 @@ class TestPosterFunctions(unittest.TestCase):
         result = navigate_to_compose(self.mock_driver)
         
         self.assertTrue(result)
-        self.mock_driver.get.assert_any_call("https://x.com/home")
-        self.mock_driver.get.assert_any_call("https://x.com/compose/tweet")
-        mock_wait.assert_called_once_with(self.mock_driver, 10)
+        self.mock_driver.get.assert_called_once_with("https://x.com/compose/tweet")
+        mock_wait.assert_called_once_with(self.mock_driver, 15)
     
     @patch('bot.services.twitter_client.poster.WebDriverWait')
     def test_navigate_to_compose_failure(self, mock_wait):
