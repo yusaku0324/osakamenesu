@@ -1,12 +1,12 @@
-name: Claude Code Max Fixed
+name: Claude Code Max Fixed (Disabled)
 on:
   workflow_dispatch:
-  issue_comment:
-    types: [created]
-  issues:
-    types: [opened]
-  pull_request:
-    types: [opened]
+  # issue_comment:
+  #   types: [created]
+  # issues:
+  #   types: [opened]
+  # pull_request:
+  #   types: [opened]
 
 permissions:
   contents: read
