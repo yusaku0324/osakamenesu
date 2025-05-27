@@ -3,6 +3,7 @@ Poster module for X (Twitter) posts
 """
 import time
 import logging
+import traceback
 import urllib.parse
 from typing import Optional, Dict, Any, List
 
