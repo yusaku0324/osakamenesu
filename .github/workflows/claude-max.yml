@@ -34,5 +34,12 @@ jobs:
         id: claude
         uses: yusaku0324/claude-code-action@main
         with:
+          # OAuth認証（Claude Maxプラン用）- トークンを設定後に有効化
+          # use_oauth: 'true'
+          # claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          # claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          # claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          
+          # API認証（現在使用中）
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
