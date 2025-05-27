@@ -1,5 +1,7 @@
 name: Claude Code Max
 on:
+  issues:
+    types: [opened, edited]
   workflow_dispatch:
     inputs:
       task:
