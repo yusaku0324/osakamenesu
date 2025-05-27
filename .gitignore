@@ -71,3 +71,13 @@ temp/
 # Local dev
 .venv/
 .python-version
+
+# Allow fixtures directories and files
+!profiles/
+!profiles/niijima_cookies.json
+!queue/
+!queue/queue_now.yaml
+kakeru-mirror/
+kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
+kakeru-mirror/
+kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
