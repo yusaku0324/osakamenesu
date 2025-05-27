@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}編集: {{ entry.title }} - 日記プラットフォーム{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>日記を編集</h2>
+    
+    <form method="POST" action="{{ url_for('edit_entry', id=entry.id) }}" class="diary-form">
+        <div class="form-group">
+            <label for="title">タイトル</label>
+            <input type="text" id="title" name="title" required maxlength="200" value="{{ entry.title }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="category">カテゴリー</label>
+            <select id="category" name="category">
+                <option value="日常" {% if entry.category == '日常' %}selected{% endif %}>日常</option>
+                <option value="仕事" {% if entry.category == '仕事' %}selected{% endif %}>仕事</option>
+                <option value="趣味" {% if entry.category == '趣味' %}selected{% endif %}>趣味</option>
+                <option value="旅行" {% if entry.category == '旅行' %}selected{% endif %}>旅行</option>
+                <option value="その他" {% if entry.category == 'その他' %}selected{% endif %}>その他</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="content">内容</label>
+            <textarea id="content" name="content" rows="15" required>{{ entry.content }}</textarea>
+        </div>
+        
+        <div class="form-info">
+            <small>作成日時: {{ entry.created_at.strftime('%Y年%m月%d日 %H:%M') }}</small>
+            {% if entry.updated_at > entry.created_at %}
+                <small>最終更新: {{ entry.updated_at.strftime('%Y年%m月%d日 %H:%M') }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">更新する</button>
+            <a href="{{ url_for('view_entry', id=entry.id) }}" class="btn btn-secondary">キャンセル</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-info {
+    margin: 1rem 0;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.form-info small {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+</style>
+{% endblock %}

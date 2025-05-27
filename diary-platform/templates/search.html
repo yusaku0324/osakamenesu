@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}検索結果: {{ query }} - 日記プラットフォーム{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>検索結果: "{{ query }}"</h2>
+    
+    {% if entries %}
+        <p class="search-info">{{ entries|length }}件の日記が見つかりました。</p>
+        
+        <div class="diary-grid">
+            {% for entry in entries %}
+                <article class="diary-card">
+                    <h3><a href="{{ url_for('view_entry', id=entry.id) }}">{{ entry.title }}</a></h3>
+                    <div class="diary-meta">
+                        <span class="category">📁 {{ entry.category }}</span>
+                        <span class="date">📅 {{ entry.created_at.strftime('%Y年%m月%d日') }}</span>
+                    </div>
+                    <p class="diary-preview">{{ entry.content[:100] }}...</p>
+                    <a href="{{ url_for('view_entry', id=entry.id) }}" class="read-more">続きを読む →</a>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>"{{ query }}" に一致する日記は見つかりませんでした。</p>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">ホームに戻る</a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.search-info {
+    margin: 1rem 0;
+    color: #666;
+}
+</style>
+{% endblock %}
