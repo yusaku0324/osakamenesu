@@ -1,13 +1,6 @@
-name: Claude Code Max
+name: Claude Code Max (Disabled)
 on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  issues:
-    types: [opened, assigned]
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch: # 手動実行のみ
 
 jobs:
   claude:
