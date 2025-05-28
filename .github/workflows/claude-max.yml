@@ -36,7 +36,7 @@ jobs:
         with:
           # OAuth認証（Claude Maxプラン用）
           use_oauth: 'true'
-          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          claude_access_token: ${{ secrets.ACCESSTOKEN }}
+          claude_refresh_token: ${{ secrets.REFRESHTOKEN }}
+          claude_expires_at: ${{ secrets.EXPIRESAT }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
