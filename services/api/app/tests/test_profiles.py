@@ -134,6 +134,12 @@ class FakeSession:
             return FakeResult(scalar_one=count)
         raise AssertionError(f"Unhandled query: {query}")
 
+    async def refresh(self, instance: Any, attribute_names: Optional[List[str]] = None) -> None:
+        # The real session only ensures relationships like reviews are loaded; here the profiles
+        # already carry eager data so the method becomes a no-op for compatibility.
+        if attribute_names and "reviews" in attribute_names and not hasattr(instance, "reviews"):
+            instance.reviews = []
+
 
 def _make_profile(**overrides: Any) -> models.Profile:
     now = datetime.now(UTC)
