@@ -35,6 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure clean slate
+        run: docker compose -f docker-compose.test.yml down -v || true
+
       - name: Run docker-compose integration tests
         env:
           DOCKER_BUILDKIT: 1
