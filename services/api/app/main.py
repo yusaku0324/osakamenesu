@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .settings import settings
@@ -15,7 +17,29 @@ from . import models
 from redis.asyncio import from_url
 
 
-app = FastAPI(title="Osaka Men-Esu API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger = logging.getLogger("app.startup")
+
+    if settings.init_db_on_startup:
+        try:
+            from .db import init_db
+
+            await init_db()
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("DB init error: %s", exc)
+
+    try:
+        ensure_indexes()
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.warning("Meili init error: %s", exc)
+
+    yield
+
+    await shutdown_rate_limiter(_outlink_rate)
+
+
+app = FastAPI(title="Osaka Men-Esu API", version="0.1.0", lifespan=lifespan)
 
 redis_client = from_url(settings.rate_limit_redis_url, encoding="utf-8", decode_responses=False) if settings.rate_limit_redis_url else None
 
@@ -72,31 +96,7 @@ async def out_redirect(token: str, request: Request, db: AsyncSession = Depends(
         pass
 
     return RedirectResponse(ol.target_url, status_code=302)
-
-
-@app.on_event("startup")
-async def on_startup():
-    logger = logging.getLogger("app.startup")
-    # Initialize DB schema (dev convenience)
-    if settings.init_db_on_startup:
-        try:
-            from .db import init_db
-            await init_db()
-        except Exception as e:
-            logger.warning("DB init error: %s", e)
-    # Ensure Meilisearch index/settings
-    try:
-        ensure_indexes()
-    except Exception as e:
-        logger.warning("Meili init error: %s", e)
-
-
 app.include_router(profiles_router)
 app.include_router(admin_router)
 app.include_router(shops_router)
 app.include_router(reservations_router)
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    await shutdown_rate_limiter(_outlink_rate)
