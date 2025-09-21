@@ -2,7 +2,7 @@ from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 
@@ -20,7 +20,7 @@ ReservationStatus = Enum('pending', 'confirmed', 'declined', 'cancelled', 'expir
 
 
 def now_utc() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(UTC)
 
 
 class Profile(Base):

@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -71,8 +71,8 @@ async def _create_profile() -> models.Profile:
         ranking_badges=["人気No.1"],
         ranking_weight=90,
         status="published",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
     availability = models.Availability(

@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -136,7 +136,7 @@ class FakeSession:
 
 
 def _make_profile(**overrides: Any) -> models.Profile:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     defaults: Dict[str, Any] = {
         "id": uuid.uuid4(),
         "name": "テスト店",
