@@ -185,7 +185,21 @@ def _make_profile(**overrides: Any) -> models.Profile:
         "updated_at": now,
     }
     defaults.update(overrides)
-    return models.Profile(**defaults)
+    profile = models.Profile(**defaults)
+    review = models.Review(
+        id=uuid.uuid4(),
+        profile_id=profile.id,
+        status='published',
+        score=5,
+        title="極上の癒し",
+        body="接客も技術も素晴らしいです",
+        author_alias="匿名ユーザー",
+        visited_at=date.today(),
+        created_at=now,
+        updated_at=now,
+    )
+    profile.reviews = [review]
+    return profile
 
 
 def test_build_profile_doc_promotions_and_reviews() -> None:
@@ -207,8 +221,8 @@ def test_build_profile_doc_promotions_and_reviews() -> None:
     labels = {promo["label"] for promo in doc["promotions"]}
     assert "WEB割" in labels
     assert "朝割" in labels
-    assert doc["review_score"] == pytest.approx(4.6)
-    assert doc["review_count"] == 12
+    assert doc["review_score"] == pytest.approx(5.0)
+    assert doc["review_count"] == 1
     assert doc["ranking_reason"] == "編集部ピックアップ"
 
 

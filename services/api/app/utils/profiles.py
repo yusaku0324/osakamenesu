@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable, Tuple, Any
+from typing import Optional, Iterable, Tuple, Any, List
 
 from .. import models
 
@@ -23,7 +23,7 @@ def _safe_float(v: object) -> Optional[float]:
         return None
 
 
-def _extract_review_stats(reviews: Any) -> tuple[Optional[float], Optional[int]]:
+def _extract_review_stats(reviews: Any) -> tuple[Optional[float], Optional[int], list[dict[str, Any]]]:
     average: Optional[float] = None
     count: Optional[int] = None
     items: list[dict[str, Any]] = []
@@ -46,7 +46,53 @@ def _extract_review_stats(reviews: Any) -> tuple[Optional[float], Optional[int]]
     if count is None and items:
         count = len(items)
 
-    return average, count
+    return average, count, items
+
+
+def _published_reviews(profile: models.Profile) -> list[models.Review]:
+    try:
+        reviews = list(getattr(profile, "reviews", []) or [])
+    except Exception:
+        return []
+    return [r for r in reviews if getattr(r, "status", None) == 'published']
+
+
+def _review_highlights(reviews: list[models.Review], limit: int = 3) -> list[dict[str, Any]]:
+    sorted_reviews = sorted(
+        reviews,
+        key=lambda r: (r.visited_at or r.created_at, r.created_at),
+        reverse=True,
+    )[:limit]
+    highlights: list[dict[str, Any]] = []
+    for review in sorted_reviews:
+        highlights.append(
+            {
+                "review_id": str(review.id),
+                "title": review.title or review.body[:40],
+                "body": review.body,
+                "score": review.score,
+                "visited_at": review.visited_at.isoformat() if review.visited_at else None,
+                "author_alias": review.author_alias,
+            }
+        )
+    return highlights
+
+
+def compute_review_summary(
+    profile: models.Profile,
+    fallback_reviews: Any = None,
+    *,
+    highlight_limit: int = 3,
+) -> tuple[Optional[float], Optional[int], list[dict[str, Any]]]:
+    published_reviews = _published_reviews(profile)
+    if published_reviews:
+        average = round(sum(r.score for r in published_reviews) / len(published_reviews), 1)
+        count = len(published_reviews)
+        highlights = _review_highlights(published_reviews, limit=highlight_limit)
+        return average, count, highlights
+
+    average, count, fallback_items = _extract_review_stats(fallback_reviews)
+    return average, count, fallback_items[:highlight_limit]
 
 
 def infer_height_age(profile: models.Profile) -> Tuple[Optional[int], Optional[int]]:
@@ -158,7 +204,11 @@ def build_profile_doc(
                 }
             )
 
-    review_score, review_count = _extract_review_stats(contact_json.get("reviews"))
+    review_score, review_count, review_highlights = compute_review_summary(
+        profile,
+        contact_json.get("reviews"),
+        highlight_limit=3,
+    )
     ranking_reason = contact_json.get("ranking_reason") or contact_json.get("ranking_message")
     return {
         "id": str(profile.id),
@@ -184,6 +234,7 @@ def build_profile_doc(
         "promotions": promotions,
         "review_score": review_score,
         "review_count": review_count,
+        "review_highlights": review_highlights,
         "ranking_reason": ranking_reason,
         "staff_preview": contact_json.get("staff"),
     }

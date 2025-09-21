@@ -2,7 +2,7 @@ from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, date, UTC
 from typing import Any
 
 
@@ -14,6 +14,7 @@ StatusDiary = Enum('mod', 'published', 'hidden', name='status_diary')
 OutlinkKind = Enum('line', 'tel', 'web', name='outlink_kind')
 ReportTarget = Enum('profile', 'diary', name='report_target')
 ReportStatus = Enum('open', 'closed', name='report_status')
+ReviewStatus = Enum('pending', 'published', 'rejected', name='review_status')
 # bust_tag はマイグレーション互換性のため VARCHAR で運用
 ServiceType = Enum('store', 'dispatch', name='service_type')
 ReservationStatus = Enum('pending', 'confirmed', 'declined', 'cancelled', 'expired', name='reservation_status')
@@ -46,6 +47,7 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
 
     diaries: Mapped[list["Diary"]] = relationship(back_populates='profile', cascade='all,delete-orphan')
+    reviews: Mapped[list["Review"]] = relationship(back_populates='profile', cascade='all, delete-orphan')
 
 
 class Diary(Base):
@@ -110,6 +112,23 @@ class Report(Base):
     note: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(ReportStatus, default='open', index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class Review(Base):
+    __tablename__ = 'reviews'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), index=True)
+    status: Mapped[str] = mapped_column(ReviewStatus, default='pending', nullable=False, index=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(160))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    author_alias: Mapped[str | None] = mapped_column(String(80))
+    visited_at: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+
+    profile: Mapped["Profile"] = relationship(back_populates='reviews')
 
 
 class AdminLog(Base):

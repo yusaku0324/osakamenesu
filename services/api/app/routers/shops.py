@@ -5,8 +5,8 @@ from typing import Any, Dict, Iterable, List, Set
 from uuid import UUID
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models
@@ -23,6 +23,9 @@ from ..schemas import (
     MediaImage,
     MenuItem,
     Promotion,
+    ReviewCreateRequest,
+    ReviewItem,
+    ReviewListResponse,
     ReviewSummary,
     ShopDetail,
     ShopSearchResponse,
@@ -30,10 +33,54 @@ from ..schemas import (
     SocialLink,
     StaffSummary,
 )
-from ..utils.profiles import build_profile_doc, infer_store_name
+from ..utils.profiles import build_profile_doc, infer_store_name, compute_review_summary
 
 
 router = APIRouter(prefix="/api/v1/shops", tags=["shops"])
+
+
+def serialize_review(review: models.Review) -> ReviewItem:
+    return ReviewItem(
+        id=review.id,
+        profile_id=review.profile_id,
+        status=review.status,
+        score=review.score,
+        title=review.title,
+        body=review.body,
+        author_alias=review.author_alias,
+        visited_at=review.visited_at,
+        created_at=review.created_at,
+        updated_at=review.updated_at,
+    )
+
+
+async def _fetch_published_reviews(
+    db: AsyncSession,
+    profile_id: UUID,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+) -> List[models.Review]:
+    stmt = (
+        select(models.Review)
+        .where(models.Review.profile_id == profile_id, models.Review.status == 'published')
+        .order_by(models.Review.visited_at.desc(), models.Review.created_at.desc())
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    result = await db.scalars(stmt)
+    return list(result)
+
+
+async def _count_published_reviews(db: AsyncSession, profile_id: UUID) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(models.Review)
+        .where(models.Review.profile_id == profile_id, models.Review.status == 'published')
+    )
+    result = await db.execute(stmt)
+    return int(result.scalar_one())
 
 
 def _unix_to_dt(ts: int | None) -> datetime | None:
@@ -495,12 +542,23 @@ async def get_shop_detail(shop_id: UUID, db: AsyncSession = Depends(get_session)
     staff_members = _normalize_staff(contact_data.get("staff"), profile.id)
     service_tags = contact_data.get("service_tags") if isinstance(contact_data.get("service_tags"), list) else profile.body_tags or []
     promotions = _normalize_promotions(profile.discounts or [], contact_data.get("promotions"))
-    review_summary = _normalize_reviews(contact_data.get("reviews"))
+    await db.refresh(profile, attribute_names=["reviews"])
+    review_avg, review_count, review_highlights = compute_review_summary(
+        profile,
+        contact_data.get("reviews"),
+        highlight_limit=3,
+    )
+    review_summary = _normalize_reviews(review_highlights)
     ranking_reason = contact_data.get("ranking_reason") or doc.get("ranking_reason")
 
-    if review_summary.average_score is None:
+    if review_avg is not None:
+        review_summary.average_score = review_avg
+    elif review_summary.average_score is None:
         review_summary.average_score = _safe_float(doc.get("review_score"))
-    if review_summary.review_count is None:
+
+    if review_count is not None:
+        review_summary.review_count = review_count
+    elif review_summary.review_count is None:
         review_summary.review_count = _safe_int(doc.get("review_count"))
 
     metadata = {"store_name": infer_store_name(profile)}
@@ -563,3 +621,48 @@ async def get_shop_availability(
     if not availability:
         raise HTTPException(status_code=404, detail="availability not found")
     return availability.model_dump()
+
+
+@router.get("/{shop_id}/reviews", response_model=ReviewListResponse)
+async def list_shop_reviews(
+    shop_id: UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    total = await _count_published_reviews(db, shop_id)
+    offset = (page - 1) * page_size
+    reviews = await _fetch_published_reviews(db, shop_id, limit=page_size, offset=offset)
+    return ReviewListResponse(
+        total=total,
+        items=[serialize_review(r) for r in reviews],
+    )
+
+
+@router.post("/{shop_id}/reviews", response_model=ReviewItem, status_code=status.HTTP_201_CREATED)
+async def create_shop_review(
+    shop_id: UUID,
+    payload: ReviewCreateRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    review = models.Review(
+        profile_id=profile.id,
+        score=payload.score,
+        title=payload.title,
+        body=payload.body,
+        author_alias=payload.author_alias,
+        visited_at=payload.visited_at,
+        status='pending',
+    )
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+    return serialize_review(review)

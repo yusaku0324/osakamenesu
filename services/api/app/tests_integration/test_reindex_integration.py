@@ -100,10 +100,22 @@ async def _create_profile() -> models.Profile:
         utm=None,
     )
 
+    review = models.Review(
+        id=uuid.uuid4(),
+        profile_id=profile.id,
+        status='published',
+        score=5,
+        title="極上の癒し",
+        body="接客が非常に丁寧でリピート決定",
+        author_alias="匿名会員",
+        visited_at=date.today(),
+    )
+
     async with SessionLocal() as session:
         session.add(profile)
         session.add(availability)
         session.add(outlink)
+        session.add(review)
         await session.commit()
 
     return profile
@@ -135,7 +147,58 @@ async def test_reindex_all_end_to_end(anyio_backend_name: str) -> None:
         first = payload["results"][0]
         assert first["id"] == str(profile.id)
         assert any(promo["label"] == "朝割キャンペーン" for promo in first.get("promotions", []))
-        assert first.get("rating") == pytest.approx(4.8)
+        assert first.get("rating") == pytest.approx(5.0)
         assert first.get("ranking_reason") == "編集部ピックアップ"
+
+        # Submit a user review (pending by default)
+        create_resp = await client.post(
+            f"/api/v1/shops/{profile.id}/reviews",
+            json={
+                "score": 4,
+                "title": "良かったです",
+                "body": "手技が丁寧でまたお願いしたいです",
+                "author_alias": "体験ユーザー",
+                "visited_at": date.today().isoformat(),
+            },
+        )
+        assert create_resp.status_code == 201
+        created_review = create_resp.json()
+        assert created_review["status"] == "pending"
+
+        # Publish the review via admin API
+        resp = await client.patch(
+            f"/api/admin/reviews/{created_review['id']}",
+            headers={"X-Admin-Key": settings.admin_api_key},
+            json={"status": "published"},
+        )
+        assert resp.status_code == 200
+
+        # Reindex to reflect updated review aggregates in search
+        resp = await client.post(
+            "/api/admin/reindex",
+            headers={"X-Admin-Key": settings.admin_api_key},
+        )
+        assert resp.status_code == 200
+
+        # Listing reviews should include both published items
+        resp = await client.get(f"/api/v1/shops/{profile.id}/reviews")
+        assert resp.status_code == 200
+        review_list = resp.json()
+        assert review_list["total"] == 2
+
+        # Detail view reflects updated averages
+        resp = await client.get(f"/api/v1/shops/{profile.id}")
+        assert resp.status_code == 200
+        detail = resp.json()
+        assert detail["reviews"]["review_count"] == 2
+        assert detail["reviews"]["average_score"] == pytest.approx(4.5, rel=1e-3)
+
+        # Search results reflect new aggregated rating
+        resp = await client.get("/api/v1/shops?page_size=5")
+        assert resp.status_code == 200
+        payload = resp.json()
+        first = payload["results"][0]
+        assert first["review_count"] == 2
+        assert first["rating"] == pytest.approx(4.5, rel=1e-3)
 
     purge_all()

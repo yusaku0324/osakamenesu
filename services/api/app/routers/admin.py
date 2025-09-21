@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -22,12 +22,15 @@ from ..schemas import (
     ShopAdminDetail,
     MenuItem,
     StaffSummary,
+    ReviewListResponse,
+    ReviewItem,
+    ReviewModerationRequest,
 )
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
 from typing import Optional, Any
 from ..deps import require_admin, audit_admin
-from .shops import _fetch_availability, _normalize_menus, _normalize_staff
+from .shops import _fetch_availability, _normalize_menus, _normalize_staff, serialize_review
 
 router = APIRouter(dependencies=[Depends(require_admin), Depends(audit_admin)])
 JST = ZoneInfo("Asia/Tokyo")
@@ -83,6 +86,7 @@ async def reindex_one(profile_id: str, db: AsyncSession = Depends(get_session)):
     p = res.scalar_one_or_none()
     if not p:
         raise HTTPException(404, "profile not found")
+    await db.refresh(p, attribute_names=["reviews"])
     today = datetime.now(JST).date()
     res = await db.execute(
         select(func.count())
@@ -113,6 +117,7 @@ async def reindex_all(purge: bool = False, db: AsyncSession = Depends(get_sessio
     today = datetime.now(JST).date()
     docs = []
     for p in profiles:
+        await db.refresh(p, attribute_names=["reviews"])
         res2 = await db.execute(
             select(func.count())
             .select_from(models.Availability)
@@ -197,6 +202,58 @@ async def create_availability_bulk(payload: list[AvailabilityCreate], db: AsyncS
 
     await db.commit()
     return {"created": created}
+
+
+@router.get("/api/admin/reviews", summary="List reviews", response_model=ReviewListResponse)
+async def admin_list_reviews(
+    status: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_session),
+):
+    stmt = select(models.Review).order_by(models.Review.created_at.desc())
+    count_stmt = select(func.count()).select_from(models.Review)
+    if status:
+        stmt = stmt.where(models.Review.status == status)
+        count_stmt = count_stmt.where(models.Review.status == status)
+
+    total = await db.scalar(count_stmt)
+    offset = (page - 1) * page_size
+    reviews = await db.scalars(stmt.offset(offset).limit(page_size))
+    return ReviewListResponse(
+        total=int(total or 0),
+        items=[serialize_review(r) for r in reviews],
+    )
+
+
+@router.patch("/api/admin/reviews/{review_id}", summary="Update review status", response_model=ReviewItem)
+async def admin_update_review_status(
+    review_id: UUID,
+    payload: ReviewModerationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+):
+    review = await db.get(models.Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="review not found")
+
+    before = serialize_review(review).model_dump()
+    review.status = payload.status
+    review.updated_at = models.now_utc()
+    await db.commit()
+    await db.refresh(review)
+
+    await _record_change(
+        request,
+        db,
+        target_type="review",
+        target_id=review.id,
+        action="moderate",
+        before=before,
+        after=serialize_review(review).model_dump(),
+    )
+
+    return serialize_review(review)
 
 
 @router.post("/api/admin/outlinks", summary="Create outlink (seed)")

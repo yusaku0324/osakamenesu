@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, conint, constr
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from datetime import datetime, date
@@ -219,10 +219,40 @@ class HighlightedReview(BaseModel):
     author_alias: Optional[str] = None
 
 
+class ReviewItem(BaseModel):
+    id: UUID
+    profile_id: UUID
+    status: Literal['pending', 'published', 'rejected']
+    score: int
+    title: Optional[str] = None
+    body: str
+    author_alias: Optional[str] = None
+    visited_at: Optional[date] = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class ReviewSummary(BaseModel):
     average_score: Optional[float] = None
     review_count: Optional[int] = None
     highlighted: List[HighlightedReview] = Field(default_factory=list)
+
+
+class ReviewCreateRequest(BaseModel):
+    score: conint(ge=1, le=5)
+    body: constr(min_length=1, max_length=4000)
+    title: Optional[constr(max_length=160)] = None
+    author_alias: Optional[constr(max_length=80)] = None
+    visited_at: Optional[date] = None
+
+
+class ReviewListResponse(BaseModel):
+    total: int
+    items: List[ReviewItem]
+
+
+class ReviewModerationRequest(BaseModel):
+    status: Literal['pending', 'published', 'rejected']
 
 
 class ShopDetail(ShopSummary):
