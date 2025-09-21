@@ -39,8 +39,81 @@ jobs:
           curl -sSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
           task after:after-ci:full
 
+  integration-test:
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: osaka-menesu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run docker-compose integration tests
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from api-test api-test
+
+      - name: Teardown integration stack
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  web-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: osaka-menesu/apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: osaka-menesu/apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Next.js lint
+        run: npm run lint
+
+  admin-e2e:
+    needs:
+      - web-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: osaka-menesu/apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: osaka-menesu/apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run admin E2E tests
+        env:
+          ADMIN_BASIC_USER: ${{ secrets.ADMIN_BASIC_USER }}
+          ADMIN_BASIC_PASS: ${{ secrets.ADMIN_BASIC_PASS }}
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: npm run test:e2e -- --grep "Admin"
+
   docker-publish:
-    needs: test                   # テスト成功時のみ
+    needs:
+      - test                   # テスト成功時のみ
+      - integration-test
+      - web-lint
+      - admin-e2e
     if: github.ref == 'refs/heads/main'   # main ブランチ限定
     runs-on: ubuntu-latest
     permissions:

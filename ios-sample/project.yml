@@ -1,0 +1,18 @@
+name: AiKareshi
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    iOS: '16.0'
+targets:
+  AiKareshi:
+    type: application
+    platform: iOS
+    sources:
+      - .
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.example.aikareshi
+      PRODUCT_NAME: AiKareshi
+      SWIFT_VERSION: 5.9
+      INFOPLIST_FILE: ios-sample/Info.plist
+    scheme:
+      testTargets: []
