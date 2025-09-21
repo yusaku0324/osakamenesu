@@ -1,0 +1,9 @@
+.env
+node_modules/
+**/.next/
+**/dist/
+**/.turbo/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+db_data/
