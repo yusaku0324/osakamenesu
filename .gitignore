@@ -81,3 +81,4 @@ kakeru-mirror/
 kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
 kakeru-mirror/
 kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
+credentials.json
