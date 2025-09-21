@@ -9,23 +9,35 @@ branch_labels = None
 depends_on = None
 
 
+def _ensure_enum(name: str, *values: str) -> sa.Enum:
+    values_sql = ", ".join(f"'{v}'" for v in values)
+    op.execute(
+        sa.text(
+            f"""
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{name}') THEN
+                CREATE TYPE {name} AS ENUM ({values_sql});
+              END IF;
+            END
+            $$;
+            """
+        )
+    )
+    return sa.Enum(*values, name=name, create_type=False)
+
+
 def upgrade() -> None:
     # enums
-    status_profile = sa.Enum('draft', 'published', 'hidden', name='status_profile')
-    status_diary = sa.Enum('mod', 'published', 'hidden', name='status_diary')
-    outlink_kind = sa.Enum('line', 'tel', 'web', name='outlink_kind')
-    report_target = sa.Enum('profile', 'diary', name='report_target')
-    report_status = sa.Enum('open', 'closed', name='report_status')
+    status_profile = _ensure_enum('status_profile', 'draft', 'published', 'hidden')
+    status_diary = _ensure_enum('status_diary', 'mod', 'published', 'hidden')
+    outlink_kind = _ensure_enum('outlink_kind', 'line', 'tel', 'web')
+    report_target = _ensure_enum('report_target', 'profile', 'diary')
+    report_status = _ensure_enum('report_status', 'open', 'closed')
     # Note: bust_tag is stored as VARCHAR to avoid ENUM migration conflicts.
     # Historical environments may already have a conflicting ENUM type.
 
     bind = op.get_bind()
-    status_profile.create(bind, checkfirst=True)
-    status_diary.create(bind, checkfirst=True)
-    outlink_kind.create(bind, checkfirst=True)
-    report_target.create(bind, checkfirst=True)
-    report_status.create(bind, checkfirst=True)
-    # Do not create bust_tag ENUM here; we use VARCHAR column for bust_tag.
 
     inspector = sa.inspect(bind)
 
