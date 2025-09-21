@@ -1,3 +1,5 @@
+from typing import Any
+
 from meilisearch import Client
 from .settings import settings
 
@@ -7,16 +9,32 @@ def get_client() -> Client:
     return Client(settings.meili_host, settings.meili_master_key)
 
 
+def _extract_task_uid(task: Any) -> Any:
+    if task is None:
+        return None
+    if isinstance(task, dict):
+        return task.get('taskUid') or task.get('uid')
+    return getattr(task, 'task_uid', None) or getattr(task, 'uid', None)
+
+
+def _wait_for_task(task: Any, client: Client | None = None) -> None:
+    uid = _extract_task_uid(task)
+    if uid is None:
+        return
+    (client or get_client()).wait_for_task(uid)
+
+
 def ensure_indexes() -> None:
     client = get_client()
     try:
         client.get_index(INDEX)
     except Exception:
-        client.create_index(INDEX, {"primaryKey": "id"})
+        create_task = client.create_index(INDEX, {"primaryKey": "id"})
+        _wait_for_task(create_task, client)
     idx = client.index(INDEX)
     # Use default ranking rules and avoid invalid custom rules for Meilisearch v1.x
     # Custom ordering can be achieved via the `sort` parameter at query time.
-    idx.update_settings({
+    settings_task = idx.update_settings({
         "filterableAttributes": [
             "area", "bust_tag", "service_type", "body_tags", "price_min", "price_max", "status", "today",
             "height_cm", "age", "ranking_badges"
@@ -31,25 +49,34 @@ def ensure_indexes() -> None:
             "words", "typo", "proximity", "attribute", "sort", "exactness"
         ],
     })
+    _wait_for_task(settings_task, client)
 
 
 def index_profile(doc: dict):
-    get_client().index(INDEX).add_documents([doc])
+    client = get_client()
+    task = client.index(INDEX).add_documents([doc])
+    _wait_for_task(task, client)
 
 
 def index_bulk(docs: list[dict]):
     if not docs:
         return
-    get_client().index(INDEX).add_documents(docs)
+    client = get_client()
+    task = client.index(INDEX).add_documents(docs)
+    _wait_for_task(task, client)
 
 
 def delete_profile(doc_id: str):
-    get_client().index(INDEX).delete_document(doc_id)
+    client = get_client()
+    task = client.index(INDEX).delete_document(doc_id)
+    _wait_for_task(task, client)
 
 
 def purge_all():
     """Delete all documents in the index (keeps settings)."""
-    get_client().index(INDEX).delete_all_documents()
+    client = get_client()
+    task = client.index(INDEX).delete_all_documents()
+    _wait_for_task(task, client)
 
 
 def build_filter(area: str | None, bust: str | None, service_type: str | None,

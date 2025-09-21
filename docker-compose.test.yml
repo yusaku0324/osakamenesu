@@ -32,6 +32,7 @@ services:
       MEILI_MASTER_KEY: dev_meili_master_key
       ADMIN_API_KEY: dev_admin_key
       PYTHONUNBUFFERED: 1
+      PYTHONPATH: /app
     depends_on:
       db-test:
         condition: service_healthy

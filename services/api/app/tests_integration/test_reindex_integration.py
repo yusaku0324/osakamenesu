@@ -3,14 +3,17 @@ import uuid
 from datetime import date, datetime
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
 from app import models
 from app.db import SessionLocal
 from app.main import app
-from app.meili import purge_all
+from app.meili import ensure_indexes, purge_all
 from app.settings import settings
+
+
+os.environ.setdefault("ANYIO_BACKEND", "asyncio")
 
 
 pytestmark = pytest.mark.integration
@@ -106,14 +109,19 @@ async def _create_profile() -> models.Profile:
     return profile
 
 
-@pytest.mark.anyio
-async def test_reindex_all_end_to_end() -> None:
+@pytest.mark.anyio('asyncio')
+async def test_reindex_all_end_to_end(anyio_backend_name: str) -> None:
+    if anyio_backend_name != "asyncio":
+        pytest.skip("test requires asyncio backend")
+
     await _reset_database()
     purge_all()
+    ensure_indexes()
 
     profile = await _create_profile()
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/admin/reindex",
             headers={"X-Admin-Key": settings.admin_api_key},

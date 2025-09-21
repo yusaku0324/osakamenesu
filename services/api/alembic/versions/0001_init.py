@@ -24,7 +24,12 @@ def _ensure_enum(name: str, *values: str) -> sa.Enum:
             """
         )
     )
-    return sa.Enum(*values, name=name, create_type=False)
+    return postgresql.ENUM(
+        *values,
+        name=name,
+        create_type=False,
+        _create_events=False,
+    )
 
 
 def upgrade() -> None:
@@ -34,6 +39,7 @@ def upgrade() -> None:
     outlink_kind = _ensure_enum('outlink_kind', 'line', 'tel', 'web')
     report_target = _ensure_enum('report_target', 'profile', 'diary')
     report_status = _ensure_enum('report_status', 'open', 'closed')
+    service_type = _ensure_enum('service_type', 'store', 'dispatch')
     # Note: bust_tag is stored as VARCHAR to avoid ENUM migration conflicts.
     # Historical environments may already have a conflicting ENUM type.
 
@@ -50,6 +56,7 @@ def upgrade() -> None:
             sa.Column('price_min', sa.Integer(), index=True),
             sa.Column('price_max', sa.Integer(), index=True),
             sa.Column('bust_tag', sa.String(length=16), index=True),
+            sa.Column('service_type', service_type, index=True, nullable=False, server_default='store'),
             sa.Column('body_tags', postgresql.ARRAY(sa.String(length=64))),
             sa.Column('photos', postgresql.ARRAY(sa.Text())),
             sa.Column('contact_json', postgresql.JSONB()),
@@ -62,7 +69,17 @@ def upgrade() -> None:
         op.create_table(
             'diaries',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('profiles.id', ondelete='CASCADE'), index=True),
+            sa.Column(
+                'profile_id',
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey(
+                    'profiles.id',
+                    ondelete='CASCADE',
+                    deferrable=True,
+                    initially='DEFERRED',
+                ),
+                index=True,
+            ),
             sa.Column('title', sa.String(length=160)),
             sa.Column('text', sa.Text()),
             sa.Column('photos', postgresql.ARRAY(sa.Text())),
@@ -75,7 +92,17 @@ def upgrade() -> None:
         op.create_table(
             'availabilities',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('profiles.id', ondelete='CASCADE'), index=True),
+            sa.Column(
+                'profile_id',
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey(
+                    'profiles.id',
+                    ondelete='CASCADE',
+                    deferrable=True,
+                    initially='DEFERRED',
+                ),
+                index=True,
+            ),
             sa.Column('date', sa.Date(), index=True),
             sa.Column('slots_json', postgresql.JSONB()),
             sa.Column('is_today', sa.Boolean(), server_default=sa.text('false'), index=True),
@@ -85,7 +112,17 @@ def upgrade() -> None:
         op.create_table(
             'outlinks',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('profiles.id', ondelete='CASCADE'), index=True),
+            sa.Column(
+                'profile_id',
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey(
+                    'profiles.id',
+                    ondelete='CASCADE',
+                    deferrable=True,
+                    initially='DEFERRED',
+                ),
+                index=True,
+            ),
             sa.Column('kind', outlink_kind, index=True),
             sa.Column('token', sa.String(length=64), unique=True, index=True),
             sa.Column('target_url', sa.Text()),
@@ -96,7 +133,17 @@ def upgrade() -> None:
         op.create_table(
             'clicks',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column('outlink_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('outlinks.id', ondelete='CASCADE'), index=True),
+            sa.Column(
+                'outlink_id',
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey(
+                    'outlinks.id',
+                    ondelete='CASCADE',
+                    deferrable=True,
+                    initially='DEFERRED',
+                ),
+                index=True,
+            ),
             sa.Column('ts', sa.DateTime(timezone=True), index=True),
             sa.Column('referer', sa.Text()),
             sa.Column('ua', sa.Text()),
@@ -107,7 +154,17 @@ def upgrade() -> None:
         op.create_table(
             'consents',
             sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('profiles.id', ondelete='CASCADE'), index=True),
+            sa.Column(
+                'profile_id',
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey(
+                    'profiles.id',
+                    ondelete='CASCADE',
+                    deferrable=True,
+                    initially='DEFERRED',
+                ),
+                index=True,
+            ),
             sa.Column('doc_version', sa.String(length=40)),
             sa.Column('agreed_at', sa.DateTime(timezone=True)),
             sa.Column('ip', sa.String(length=64)),
@@ -130,5 +187,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     for t in ['reports','consents','clicks','outlinks','availabilities','diaries','profiles']:
         op.drop_table(t)
-    for e in ['report_status','report_target','outlink_kind','status_diary','status_profile','bust_tag']:
-        sa.Enum(name=e).drop(op.get_bind(), checkfirst=True)
+    for e in ['service_type','report_status','report_target','outlink_kind','status_diary','status_profile','bust_tag']:
+        postgresql.ENUM(name=e).drop(op.get_bind(), checkfirst=True)
