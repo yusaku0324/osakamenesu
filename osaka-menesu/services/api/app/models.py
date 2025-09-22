@@ -2,7 +2,7 @@ from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any
 
 
@@ -11,6 +11,7 @@ Base = declarative_base()
 
 StatusProfile = Enum('draft', 'published', 'hidden', name='status_profile')
 StatusDiary = Enum('mod', 'published', 'hidden', name='status_diary')
+ReviewStatus = Enum('pending', 'published', 'rejected', name='review_status')
 OutlinkKind = Enum('line', 'tel', 'web', name='outlink_kind')
 ReportTarget = Enum('profile', 'diary', name='report_target')
 ReportStatus = Enum('open', 'closed', name='report_status')
@@ -46,6 +47,7 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
 
     diaries: Mapped[list["Diary"]] = relationship(back_populates='profile', cascade='all,delete-orphan')
+    reviews: Mapped[list["Review"]] = relationship(back_populates='profile', cascade='all, delete-orphan')
 
 
 class Diary(Base):
@@ -60,6 +62,22 @@ class Diary(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
     profile: Mapped["Profile"] = relationship(back_populates='diaries')
+
+
+class Review(Base):
+    __tablename__ = 'reviews'
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), index=True)
+    status: Mapped[str] = mapped_column(ReviewStatus, default='pending', nullable=False, index=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    author_alias: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    visited_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+
+    profile: Mapped["Profile"] = relationship(back_populates='reviews')
 
 
 class Availability(Base):

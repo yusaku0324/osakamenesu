@@ -6,13 +6,15 @@ from uuid import UUID
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models
 from ..db import get_session
-from ..meili import search as meili_search, build_filter
+from ..meili import search as meili_search, build_filter, index_profile
 from ..schemas import (
+    DiaryEntry,
+    DiaryList,
     AvailabilityCalendar,
     AvailabilityDay,
     AvailabilitySlot,
@@ -24,6 +26,7 @@ from ..schemas import (
     MenuItem,
     Promotion,
     ReviewSummary,
+    ReviewCreateRequest,
     ShopDetail,
     ShopSearchResponse,
     ShopSummary,
@@ -31,9 +34,11 @@ from ..schemas import (
     StaffSummary,
 )
 from ..utils.profiles import build_profile_doc, infer_store_name
+from zoneinfo import ZoneInfo
 
 
 router = APIRouter(prefix="/api/v1/shops", tags=["shops"])
+JST = ZoneInfo("Asia/Tokyo")
 
 
 def _unix_to_dt(ts: int | None) -> datetime | None:
@@ -371,6 +376,85 @@ def _normalize_reviews(raw: Any) -> ReviewSummary:
         highlighted=highlighted,
     )
 
+
+async def _reindex_profile(db: AsyncSession, profile: models.Profile) -> None:
+    today = datetime.now(JST).date()
+    count_stmt = (
+        select(func.count())
+        .select_from(models.Availability)
+        .where(models.Availability.profile_id == profile.id, models.Availability.date == today)
+    )
+    res_today = await db.execute(count_stmt)
+    has_today = (res_today.scalar_one() or 0) > 0
+    res_out = await db.execute(select(models.Outlink).where(models.Outlink.profile_id == profile.id))
+    outlinks = list(res_out.scalars().all())
+    try:
+        index_profile(
+            build_profile_doc(profile, today=has_today, tag_score=0.0, ctr7d=0.0, outlinks=outlinks)
+        )
+    except Exception:
+        pass
+
+
+async def _refresh_review_summary(db: AsyncSession, profile: models.Profile) -> None:
+    res = await db.execute(
+        select(models.Review)
+        .where(models.Review.profile_id == profile.id, models.Review.status == 'published')
+        .order_by(models.Review.created_at.desc())
+    )
+    reviews = list(res.scalars().all())
+
+    count = len(reviews)
+    average = round(sum(r.score for r in reviews) / count, 1) if count else None
+    highlighted = [
+        {
+            "review_id": str(r.id),
+            "title": r.title or "",
+            "body": r.body,
+            "score": r.score,
+            "visited_at": r.visited_at.isoformat() if r.visited_at else None,
+            "author_alias": r.author_alias,
+        }
+        for r in reviews[:3]
+    ]
+
+    contact = dict(profile.contact_json or {})
+    contact["reviews"] = {
+        "average_score": average,
+        "review_count": count,
+        "highlighted": highlighted,
+    }
+    profile.contact_json = contact
+
+
+def _diary_to_schema(diary: models.Diary) -> DiaryEntry:
+    photos = diary.photos if isinstance(diary.photos, list) else []
+    hashtags = diary.hashtags if isinstance(diary.hashtags, list) else []
+    return DiaryEntry(
+        id=diary.id,
+        profile_id=diary.profile_id,
+        title=diary.title,
+        body=diary.text,
+        photos=photos,
+        hashtags=hashtags,
+        created_at=diary.created_at,
+    )
+
+
+def _review_to_payload(review: models.Review) -> dict[str, Any]:
+    return {
+        "id": str(review.id),
+        "profile_id": str(review.profile_id),
+        "status": review.status,
+        "score": review.score,
+        "title": review.title,
+        "body": review.body,
+        "author_alias": review.author_alias,
+        "visited_at": review.visited_at.isoformat() if review.visited_at else None,
+        "created_at": review.created_at.isoformat(),
+        "updated_at": review.updated_at.isoformat(),
+    }
+
 async def _fetch_availability(
     db: AsyncSession, shop_id: UUID, start_date: date | None = None, end_date: date | None = None
 ) -> AvailabilityCalendar | None:
@@ -563,3 +647,109 @@ async def get_shop_availability(
     if not availability:
         raise HTTPException(status_code=404, detail="availability not found")
     return availability.model_dump()
+
+
+@router.get("/{shop_id}/diaries")
+async def get_shop_diaries(
+    shop_id: UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=6, ge=1, le=20),
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    stmt = (
+        select(models.Diary)
+        .where(
+            models.Diary.profile_id == shop_id,
+            models.Diary.status == 'published',
+        )
+        .order_by(models.Diary.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    result = await db.execute(stmt)
+    diaries = result.scalars().all()
+
+    count_stmt = (
+        select(func.count())
+        .select_from(models.Diary)
+        .where(
+            models.Diary.profile_id == shop_id,
+            models.Diary.status == 'published',
+        )
+    )
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar_one()
+
+    payload = DiaryList(
+        total=total,
+        items=[_diary_to_schema(d) for d in diaries],
+    )
+    return payload.model_dump()
+
+
+@router.get("/{shop_id}/reviews")
+async def get_shop_reviews(
+    shop_id: UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    stmt = (
+        select(models.Review)
+        .where(models.Review.profile_id == shop_id, models.Review.status == 'published')
+        .order_by(models.Review.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    res = await db.execute(stmt)
+    reviews = list(res.scalars().all())
+
+    count_stmt = (
+        select(func.count())
+        .select_from(models.Review)
+        .where(models.Review.profile_id == shop_id, models.Review.status == 'published')
+    )
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    return {
+        "total": total,
+        "items": [_review_to_payload(r) for r in reviews],
+    }
+
+
+@router.post("/{shop_id}/reviews", status_code=201)
+async def create_shop_review(
+    shop_id: UUID,
+    payload: ReviewCreateRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    review = models.Review(
+        profile_id=profile.id,
+        status='pending',
+        score=payload.score,
+        title=payload.title,
+        body=payload.body,
+        author_alias=payload.author_alias,
+        visited_at=payload.visited_at,
+    )
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+
+    await _refresh_review_summary(db, profile)
+    await db.commit()
+    await _reindex_profile(db, profile)
+
+    return _review_to_payload(review)

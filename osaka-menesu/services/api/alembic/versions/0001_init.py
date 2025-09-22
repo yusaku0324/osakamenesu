@@ -9,23 +9,36 @@ branch_labels = None
 depends_on = None
 
 
+def _ensure_enum(name: str, *values: str) -> sa.Enum:
+    values_sql = ", ".join(f"'{v}'" for v in values)
+    op.execute(
+        sa.text(
+            f"""
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{name}') THEN
+                CREATE TYPE {name} AS ENUM ({values_sql});
+              END IF;
+            END
+            $$;
+            """
+        )
+    )
+    return sa.Enum(*values, name=name, create_type=False)
+
+
 def upgrade() -> None:
     # enums
-    status_profile = sa.Enum('draft', 'published', 'hidden', name='status_profile')
-    status_diary = sa.Enum('mod', 'published', 'hidden', name='status_diary')
-    outlink_kind = sa.Enum('line', 'tel', 'web', name='outlink_kind')
-    report_target = sa.Enum('profile', 'diary', name='report_target')
-    report_status = sa.Enum('open', 'closed', name='report_status')
+    status_profile = _ensure_enum('status_profile', 'draft', 'published', 'hidden')
+    status_diary = _ensure_enum('status_diary', 'mod', 'published', 'hidden')
+    review_status = _ensure_enum('review_status', 'pending', 'published', 'rejected')
+    outlink_kind = _ensure_enum('outlink_kind', 'line', 'tel', 'web')
+    report_target = _ensure_enum('report_target', 'profile', 'diary')
+    report_status = _ensure_enum('report_status', 'open', 'closed')
     # Note: bust_tag is stored as VARCHAR to avoid ENUM migration conflicts.
     # Historical environments may already have a conflicting ENUM type.
 
     bind = op.get_bind()
-    status_profile.create(bind, checkfirst=True)
-    status_diary.create(bind, checkfirst=True)
-    outlink_kind.create(bind, checkfirst=True)
-    report_target.create(bind, checkfirst=True)
-    report_status.create(bind, checkfirst=True)
-    # Do not create bust_tag ENUM here; we use VARCHAR column for bust_tag.
 
     inspector = sa.inspect(bind)
 
@@ -57,6 +70,21 @@ def upgrade() -> None:
             sa.Column('hashtags', postgresql.ARRAY(sa.String(length=64))),
             sa.Column('status', status_diary, index=True, server_default='mod'),
             sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+        )
+
+    if not inspector.has_table('reviews'):
+        op.create_table(
+            'reviews',
+            sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+            sa.Column('profile_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('profiles.id', ondelete='CASCADE'), index=True),
+            sa.Column('status', review_status, nullable=False, index=True, server_default='pending'),
+            sa.Column('score', sa.Integer(), nullable=False),
+            sa.Column('title', sa.String(length=160)),
+            sa.Column('body', sa.Text(), nullable=False),
+            sa.Column('author_alias', sa.String(length=80)),
+            sa.Column('visited_at', sa.Date()),
+            sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+            sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
         )
 
     if not inspector.has_table('availabilities'):
@@ -116,7 +144,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for t in ['reports','consents','clicks','outlinks','availabilities','diaries','profiles']:
+    for t in ['reports','consents','clicks','outlinks','availabilities','reviews','diaries','profiles']:
         op.drop_table(t)
-    for e in ['report_status','report_target','outlink_kind','status_diary','status_profile','bust_tag']:
+    for e in ['report_status','report_target','outlink_kind','review_status','status_diary','status_profile','bust_tag']:
         sa.Enum(name=e).drop(op.get_bind(), checkfirst=True)

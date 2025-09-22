@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from uuid import UUID
 import uuid
 import hashlib
@@ -22,12 +22,26 @@ from ..schemas import (
     ShopAdminDetail,
     MenuItem,
     StaffSummary,
+    DiaryAdminItem,
+    DiaryAdminList,
+    DiaryAdminCreate,
+    DiaryAdminUpdate,
+    ReviewAdminItem,
+    ReviewAdminList,
+    ReviewAdminCreate,
+    ReviewAdminUpdate,
 )
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 from ..deps import require_admin, audit_admin
-from .shops import _fetch_availability, _normalize_menus, _normalize_staff
+from .shops import (
+    _fetch_availability,
+    _normalize_menus,
+    _normalize_staff,
+    _refresh_review_summary,
+    _reindex_profile,
+)
 
 router = APIRouter(dependencies=[Depends(require_admin), Depends(audit_admin)])
 JST = ZoneInfo("Asia/Tokyo")
@@ -74,6 +88,34 @@ async def _record_change(
     except Exception:
         # Never block on audit logging
         pass
+
+
+def _diary_to_admin_item(diary: models.Diary) -> DiaryAdminItem:
+    return DiaryAdminItem(
+        id=diary.id,
+        profile_id=diary.profile_id,
+        title=diary.title,
+        body=diary.text,
+        photos=list(diary.photos or []),
+        hashtags=list(diary.hashtags or []),
+        status=diary.status,
+        created_at=diary.created_at,
+    )
+
+
+def _review_to_admin_item(review: models.Review) -> ReviewAdminItem:
+    return ReviewAdminItem(
+        id=review.id,
+        profile_id=review.profile_id,
+        status=review.status,
+        score=review.score,
+        title=review.title,
+        body=review.body,
+        author_alias=review.author_alias,
+        visited_at=review.visited_at,
+        created_at=review.created_at,
+        updated_at=review.updated_at,
+    )
 
 
 @router.post("/api/admin/profiles/{profile_id}/reindex", summary="Reindex single profile")
@@ -129,6 +171,292 @@ async def reindex_all(purge: bool = False, db: AsyncSession = Depends(get_sessio
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"meili_unavailable: {e}")
     return {"indexed": len(docs), "purged": purge}
+
+
+@router.get("/api/admin/profiles/{profile_id}/diaries", summary="List diaries", response_model=DiaryAdminList)
+async def admin_list_diaries(
+    profile_id: UUID,
+    page: int = 1,
+    page_size: int = 20,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    stmt = (
+        select(models.Diary)
+        .where(models.Diary.profile_id == profile_id)
+        .order_by(desc(models.Diary.created_at))
+        .offset(max(page - 1, 0) * page_size)
+        .limit(page_size)
+    )
+    res = await db.execute(stmt)
+    diaries = list(res.scalars().all())
+
+    count_stmt = select(func.count()).where(models.Diary.profile_id == profile_id)
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    return DiaryAdminList(total=total, items=[_diary_to_admin_item(d) for d in diaries])
+
+
+@router.post("/api/admin/profiles/{profile_id}/diaries", summary="Create diary", response_model=DiaryAdminItem)
+async def admin_create_diary(
+    request: Request,
+    profile_id: UUID,
+    payload: DiaryAdminCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    data: dict[str, Any] = {
+        "profile_id": profile.id,
+        "title": payload.title,
+        "text": payload.body,
+        "photos": payload.photos or [],
+        "hashtags": payload.hashtags or [],
+        "status": payload.status,
+    }
+    if payload.created_at:
+        data["created_at"] = payload.created_at
+    diary = models.Diary(**data)
+    db.add(diary)
+    await db.commit()
+    await db.refresh(diary)
+
+    await _reindex_profile(db, profile)
+    await _record_change(
+        request,
+        db,
+        "diary",
+        diary.id,
+        "create",
+        None,
+        _diary_to_admin_item(diary).model_dump(),
+    )
+    return _diary_to_admin_item(diary)
+
+
+@router.patch("/api/admin/diaries/{diary_id}", summary="Update diary", response_model=DiaryAdminItem)
+async def admin_update_diary(
+    request: Request,
+    diary_id: UUID,
+    payload: DiaryAdminUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    diary = await db.get(models.Diary, diary_id)
+    if not diary:
+        raise HTTPException(status_code=404, detail="diary not found")
+
+    before = _diary_to_admin_item(diary).model_dump()
+
+    if payload.title is not None:
+        diary.title = payload.title
+    if payload.body is not None:
+        diary.text = payload.body
+    if payload.photos is not None:
+        diary.photos = payload.photos
+    if payload.hashtags is not None:
+        diary.hashtags = payload.hashtags
+    if payload.status is not None:
+        diary.status = payload.status
+
+    await db.commit()
+    await db.refresh(diary)
+
+    profile = await db.get(models.Profile, diary.profile_id)
+    if profile:
+        await _reindex_profile(db, profile)
+    await _record_change(
+        request,
+        db,
+        "diary",
+        diary.id,
+        "update",
+        before,
+        _diary_to_admin_item(diary).model_dump(),
+    )
+    return _diary_to_admin_item(diary)
+
+
+@router.delete("/api/admin/diaries/{diary_id}", summary="Delete diary", status_code=204)
+async def admin_delete_diary(
+    request: Request,
+    diary_id: UUID,
+    db: AsyncSession = Depends(get_session),
+):
+    diary = await db.get(models.Diary, diary_id)
+    if not diary:
+        raise HTTPException(status_code=404, detail="diary not found")
+
+    before = _diary_to_admin_item(diary).model_dump()
+    profile_id = diary.profile_id
+
+    await db.delete(diary)
+    await db.commit()
+
+    profile = await db.get(models.Profile, profile_id)
+    if profile:
+        await _reindex_profile(db, profile)
+    await _record_change(
+        request,
+        db,
+        "diary",
+        diary_id,
+        "delete",
+        before,
+        None,
+    )
+    return Response(status_code=204)
+
+
+@router.get("/api/admin/profiles/{profile_id}/reviews", summary="List reviews", response_model=ReviewAdminList)
+async def admin_list_reviews(
+    profile_id: UUID,
+    page: int = 1,
+    page_size: int = 20,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    stmt = (
+        select(models.Review)
+        .where(models.Review.profile_id == profile_id)
+        .order_by(desc(models.Review.created_at))
+        .offset(max(page - 1, 0) * page_size)
+        .limit(page_size)
+    )
+    res = await db.execute(stmt)
+    reviews = list(res.scalars().all())
+
+    count_stmt = select(func.count()).where(models.Review.profile_id == profile_id)
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    return ReviewAdminList(total=total, items=[_review_to_admin_item(r) for r in reviews])
+
+
+@router.post("/api/admin/profiles/{profile_id}/reviews", summary="Create review", response_model=ReviewAdminItem)
+async def admin_create_review(
+    request: Request,
+    profile_id: UUID,
+    payload: ReviewAdminCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    review = models.Review(
+        profile_id=profile.id,
+        status=payload.status,
+        score=payload.score,
+        title=payload.title,
+        body=payload.body,
+        author_alias=payload.author_alias,
+        visited_at=payload.visited_at,
+    )
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+
+    await _refresh_review_summary(db, profile)
+    await db.commit()
+    await _reindex_profile(db, profile)
+    await _record_change(
+        request,
+        db,
+        "review",
+        review.id,
+        "create",
+        None,
+        _review_to_admin_item(review).model_dump(),
+    )
+    return _review_to_admin_item(review)
+
+
+@router.patch("/api/admin/reviews/{review_id}", summary="Update review", response_model=ReviewAdminItem)
+async def admin_update_review(
+    request: Request,
+    review_id: UUID,
+    payload: ReviewAdminUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    review = await db.get(models.Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="review not found")
+
+    before = _review_to_admin_item(review).model_dump()
+
+    if payload.status is not None:
+        review.status = payload.status
+    if payload.score is not None:
+        review.score = payload.score
+    if payload.title is not None:
+        review.title = payload.title
+    if payload.body is not None:
+        review.body = payload.body
+    if payload.author_alias is not None:
+        review.author_alias = payload.author_alias
+    if payload.visited_at is not None:
+        review.visited_at = payload.visited_at
+
+    await db.commit()
+    await db.refresh(review)
+
+    profile = await db.get(models.Profile, review.profile_id)
+    if profile:
+        await _refresh_review_summary(db, profile)
+        await db.commit()
+        await _reindex_profile(db, profile)
+
+    await _record_change(
+        request,
+        db,
+        "review",
+        review.id,
+        "update",
+        before,
+        _review_to_admin_item(review).model_dump(),
+    )
+    return _review_to_admin_item(review)
+
+
+@router.delete("/api/admin/reviews/{review_id}", summary="Delete review", status_code=204)
+async def admin_delete_review(
+    request: Request,
+    review_id: UUID,
+    db: AsyncSession = Depends(get_session),
+):
+    review = await db.get(models.Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="review not found")
+
+    before = _review_to_admin_item(review).model_dump()
+    profile_id = review.profile_id
+
+    await db.delete(review)
+    await db.commit()
+
+    profile = await db.get(models.Profile, profile_id)
+    if profile:
+        await _refresh_review_summary(db, profile)
+        await db.commit()
+        await _reindex_profile(db, profile)
+
+    await _record_change(
+        request,
+        db,
+        "review",
+        review_id,
+        "delete",
+        before,
+        None,
+    )
+    return Response(status_code=204)
 
 
 @router.post("/api/admin/availabilities", summary="Create availability (seed)")

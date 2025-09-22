@@ -238,6 +238,94 @@ class ShopDetail(ShopSummary):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class DiaryEntry(BaseModel):
+    id: UUID
+    profile_id: UUID
+    title: str
+    body: str
+    photos: List[str] = Field(default_factory=list)
+    hashtags: List[str] = Field(default_factory=list)
+    created_at: datetime
+
+
+class DiaryAdminBase(BaseModel):
+    title: str
+    body: str
+    photos: List[str] = Field(default_factory=list)
+    hashtags: List[str] = Field(default_factory=list)
+    status: Literal['mod', 'published', 'hidden'] = 'mod'
+
+
+class DiaryAdminCreate(DiaryAdminBase):
+    created_at: Optional[datetime] = None
+
+
+class DiaryAdminUpdate(BaseModel):
+    title: Optional[str] = None
+    body: Optional[str] = None
+    photos: Optional[List[str]] = None
+    hashtags: Optional[List[str]] = None
+    status: Optional[Literal['mod', 'published', 'hidden']] = None
+
+
+class DiaryAdminItem(DiaryAdminBase):
+    id: UUID
+    profile_id: UUID
+    created_at: datetime
+
+
+class DiaryAdminList(BaseModel):
+    total: int
+    items: List[DiaryAdminItem]
+
+
+class ReviewAdminBase(BaseModel):
+    score: int = Field(..., ge=1, le=5)
+    title: Optional[str] = None
+    body: str
+    author_alias: Optional[str] = None
+    visited_at: Optional[date] = None
+
+
+class ReviewAdminCreate(ReviewAdminBase):
+    status: Literal['pending', 'published', 'rejected'] = 'pending'
+
+
+class ReviewAdminUpdate(BaseModel):
+    status: Optional[Literal['pending', 'published', 'rejected']] = None
+    score: Optional[int] = Field(default=None, ge=1, le=5)
+    title: Optional[str] = None
+    body: Optional[str] = None
+    author_alias: Optional[str] = None
+    visited_at: Optional[date] = None
+
+
+class ReviewAdminItem(ReviewAdminBase):
+    id: UUID
+    profile_id: UUID
+    status: Literal['pending', 'published', 'rejected']
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReviewAdminList(BaseModel):
+    total: int
+    items: List[ReviewAdminItem]
+
+
+class ReviewCreateRequest(BaseModel):
+    score: int = Field(..., ge=1, le=5)
+    title: Optional[str] = None
+    body: str
+    author_alias: Optional[str] = None
+    visited_at: Optional[date] = None
+
+
+class DiaryList(BaseModel):
+    total: int
+    items: List[DiaryEntry]
+
+
 class ReservationCustomerInput(BaseModel):
     name: str
     phone: str
