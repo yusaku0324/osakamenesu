@@ -67,6 +67,30 @@ type ShopDetail = {
   availability: AvailabilityDay[]
 }
 
+type DiaryAdminItem = {
+  id: string
+  profile_id: string
+  title: string
+  body: string
+  photos: string[]
+  hashtags: string[]
+  status: 'mod' | 'published' | 'hidden'
+  created_at: string
+}
+
+type ReviewAdminItem = {
+  id: string
+  profile_id: string
+  status: 'pending' | 'published' | 'rejected'
+  score: number
+  title?: string | null
+  body: string
+  author_alias?: string | null
+  visited_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
 function toLocalIso(value?: string | null) {
   if (!value) return ''
   try {
@@ -107,6 +131,9 @@ function emptySlot(): AvailabilitySlot {
   }
 }
 
+const DIARY_STATUSES: Array<DiaryAdminItem['status']> = ['mod', 'published', 'hidden']
+const REVIEW_STATUSES: Array<ReviewAdminItem['status']> = ['pending', 'published', 'rejected']
+
 export default function AdminShopsPage() {
   const [shops, setShops] = useState<ShopSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -119,8 +146,224 @@ export default function AdminShopsPage() {
   const [description, setDescription] = useState<string>('')
   const [catchCopy, setCatchCopy] = useState<string>('')
   const [address, setAddress] = useState<string>('')
+  const [diaries, setDiaries] = useState<DiaryAdminItem[]>([])
+  const [reviews, setReviews] = useState<ReviewAdminItem[]>([])
+  const [newDiary, setNewDiary] = useState<{ title: string; body: string; photos: string; hashtags: string; status: DiaryAdminItem['status'] }>({
+    title: '',
+    body: '',
+    photos: '',
+    hashtags: '',
+    status: 'mod',
+  })
+  const [newReview, setNewReview] = useState<{ score: number; title: string; body: string; author_alias: string; visited_at: string; status: ReviewAdminItem['status'] }>({
+    score: 5,
+    title: '',
+    body: '',
+    author_alias: '',
+    visited_at: '',
+    status: 'pending',
+  })
   const { toasts, push, remove } = useToast()
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false)
+
+  async function fetchDiariesForShop(id: string) {
+    try {
+      const resp = await fetch(`/api/admin/shops/${id}/diaries?page=1&page_size=50`, { cache: 'no-store' })
+      if (!resp.ok) throw new Error('failed to load diaries')
+      const json = await resp.json()
+      setDiaries((json.items || []).map((item: DiaryAdminItem) => ({
+        ...item,
+        photos: Array.isArray(item.photos) ? item.photos : [],
+        hashtags: Array.isArray(item.hashtags) ? item.hashtags : [],
+      })))
+    } catch (err) {
+      console.error(err)
+      push('error', '写メ日記の取得に失敗しました')
+    }
+  }
+
+  async function fetchReviewsForShop(id: string) {
+    try {
+      const resp = await fetch(`/api/admin/shops/${id}/reviews?page=1&page_size=50`, { cache: 'no-store' })
+      if (!resp.ok) throw new Error('failed to load reviews')
+      const json = await resp.json()
+      setReviews((json.items || []).map((item: ReviewAdminItem) => ({
+        ...item,
+        title: item.title ?? '',
+        author_alias: item.author_alias ?? '',
+        visited_at: item.visited_at ?? '',
+      })))
+    } catch (err) {
+      console.error(err)
+      push('error', 'レビューの取得に失敗しました')
+    }
+  }
+
+  function updateDiaryField(index: number, updater: (item: DiaryAdminItem) => DiaryAdminItem) {
+    setDiaries(prev => {
+      const next = [...prev]
+      next[index] = updater(next[index])
+      return next
+    })
+  }
+
+  async function saveDiary(index: number) {
+    const diary = diaries[index]
+    try {
+      const resp = await fetch(`/api/admin/diaries/${diary.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: diary.title,
+          body: diary.body,
+          photos: diary.photos,
+          hashtags: diary.hashtags,
+          status: diary.status,
+        }),
+      })
+      if (!resp.ok) throw new Error('failed to save diary')
+      const json = await resp.json()
+      updateDiaryField(index, () => ({
+        ...json,
+        photos: Array.isArray(json.photos) ? json.photos : [],
+        hashtags: Array.isArray(json.hashtags) ? json.hashtags : [],
+      }))
+      push('success', '写メ日記を更新しました')
+    } catch (err) {
+      console.error(err)
+      push('error', '写メ日記の更新に失敗しました')
+    }
+  }
+
+  async function deleteDiary(id: string) {
+    try {
+      const resp = await fetch(`/api/admin/diaries/${id}`, { method: 'DELETE' })
+      if (!resp.ok && resp.status !== 204) throw new Error('failed to delete diary')
+      setDiaries(prev => prev.filter(d => d.id !== id))
+      push('success', '写メ日記を削除しました')
+    } catch (err) {
+      console.error(err)
+      push('error', '写メ日記の削除に失敗しました')
+    }
+  }
+
+  async function createDiary() {
+    if (!selectedId) return
+    try {
+      const payload = {
+        title: newDiary.title,
+        body: newDiary.body,
+        photos: newDiary.photos.split(',').map(v => v.trim()).filter(Boolean),
+        hashtags: newDiary.hashtags.split(',').map(v => v.trim()).filter(Boolean),
+        status: newDiary.status,
+      }
+      const resp = await fetch(`/api/admin/shops/${selectedId}/diaries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!resp.ok) throw new Error('failed to create diary')
+      const json = await resp.json()
+      setDiaries(prev => [
+        {
+          ...json,
+          photos: Array.isArray(json.photos) ? json.photos : [],
+          hashtags: Array.isArray(json.hashtags) ? json.hashtags : [],
+        },
+        ...prev,
+      ])
+      setNewDiary({ title: '', body: '', photos: '', hashtags: '', status: 'mod' })
+      push('success', '写メ日記を追加しました')
+    } catch (err) {
+      console.error(err)
+      push('error', '写メ日記の追加に失敗しました')
+    }
+  }
+
+  function updateReviewField(index: number, updater: (item: ReviewAdminItem) => ReviewAdminItem) {
+    setReviews(prev => {
+      const next = [...prev]
+      next[index] = updater(next[index])
+      return next
+    })
+  }
+
+  async function saveReview(index: number) {
+    const review = reviews[index]
+    try {
+      const resp = await fetch(`/api/admin/reviews/${review.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: review.status,
+          score: review.score,
+          title: review.title,
+          body: review.body,
+          author_alias: review.author_alias,
+          visited_at: review.visited_at || undefined,
+        }),
+      })
+      if (!resp.ok) throw new Error('failed to update review')
+      const json = await resp.json()
+      updateReviewField(index, () => ({
+        ...json,
+        title: json.title ?? '',
+        author_alias: json.author_alias ?? '',
+        visited_at: json.visited_at ?? '',
+      }))
+      push('success', 'レビューを更新しました')
+    } catch (err) {
+      console.error(err)
+      push('error', 'レビューの更新に失敗しました')
+    }
+  }
+
+  async function deleteReview(id: string) {
+    try {
+      const resp = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
+      if (!resp.ok && resp.status !== 204) throw new Error('failed to delete review')
+      setReviews(prev => prev.filter(r => r.id !== id))
+      push('success', 'レビューを削除しました')
+    } catch (err) {
+      console.error(err)
+      push('error', 'レビューの削除に失敗しました')
+    }
+  }
+
+  async function createReview() {
+    if (!selectedId) return
+    try {
+      const payload = {
+        score: newReview.score,
+        title: newReview.title || undefined,
+        body: newReview.body,
+        author_alias: newReview.author_alias || undefined,
+        visited_at: newReview.visited_at || undefined,
+        status: newReview.status,
+      }
+      const resp = await fetch(`/api/admin/shops/${selectedId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!resp.ok) throw new Error('failed to create review')
+      const json = await resp.json()
+      setReviews(prev => [
+        {
+          ...json,
+          title: json.title ?? '',
+          author_alias: json.author_alias ?? '',
+          visited_at: json.visited_at ?? '',
+        },
+        ...prev,
+      ])
+      setNewReview({ score: 5, title: '', body: '', author_alias: '', visited_at: '', status: 'pending' })
+      push('success', 'レビューを追加しました')
+    } catch (err) {
+      console.error(err)
+      push('error', 'レビューの追加に失敗しました')
+    }
+  }
 
   useEffect(() => {
     async function loadShops() {
@@ -175,6 +418,10 @@ export default function AdminShopsPage() {
         setDescription(json.description || '')
         setCatchCopy(json.catch_copy || '')
         setAddress(json.address || '')
+        setDiaries([])
+        setReviews([])
+        await fetchDiariesForShop(id)
+        await fetchReviewsForShop(id)
       } catch (err) {
         console.error(err)
         push('error', '店舗詳細の取得に失敗しました')
@@ -618,6 +865,232 @@ export default function AdminShopsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">写メ日記</h2>
+              <span className="text-xs text-slate-500">{diaries.length} 件</span>
+            </div>
+            <div className="space-y-3">
+              {diaries.map((diary, idx) => (
+                <div key={diary.id} className="border rounded-lg bg-white shadow-sm p-3 space-y-2">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>{new Date(diary.created_at).toLocaleString('ja-JP')}</span>
+                    <span>ID: {diary.id.slice(0, 8)}</span>
+                  </div>
+                  <input
+                    value={diary.title}
+                    onChange={e => updateDiaryField(idx, item => ({ ...item, title: e.target.value }))}
+                    className="border rounded px-3 py-2 text-sm w-full"
+                    placeholder="タイトル"
+                  />
+                  <textarea
+                    value={diary.body}
+                    onChange={e => updateDiaryField(idx, item => ({ ...item, body: e.target.value }))}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    rows={3}
+                    placeholder="本文"
+                  />
+                  <div className="grid md:grid-cols-2 gap-2">
+                    <input
+                      value={diary.photos.join(', ')}
+                      onChange={e => updateDiaryField(idx, item => ({
+                        ...item,
+                        photos: e.target.value.split(',').map(v => v.trim()).filter(Boolean),
+                      }))}
+                      className="border rounded px-3 py-2 text-sm"
+                      placeholder="写真URL (カンマ区切り)"
+                    />
+                    <input
+                      value={diary.hashtags.join(', ')}
+                      onChange={e => updateDiaryField(idx, item => ({
+                        ...item,
+                        hashtags: e.target.value.split(',').map(v => v.trim()).filter(Boolean),
+                      }))}
+                      className="border rounded px-3 py-2 text-sm"
+                      placeholder="ハッシュタグ"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={diary.status}
+                      onChange={e => updateDiaryField(idx, item => ({ ...item, status: e.target.value as DiaryAdminItem['status'] }))}
+                      className="border rounded px-3 py-2 text-sm"
+                    >
+                      {DIARY_STATUSES.map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => saveDiary(idx)} className="px-3 py-1 rounded bg-emerald-600 text-white text-sm">保存</button>
+                    <button onClick={() => deleteDiary(diary.id)} className="px-3 py-1 rounded text-sm text-red-600 border">削除</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold">新しい写メ日記を追加</h3>
+              <input
+                value={newDiary.title}
+                onChange={e => setNewDiary(prev => ({ ...prev, title: e.target.value }))}
+                className="border rounded px-3 py-2 text-sm w-full"
+                placeholder="タイトル"
+              />
+              <textarea
+                value={newDiary.body}
+                onChange={e => setNewDiary(prev => ({ ...prev, body: e.target.value }))}
+                className="w-full border rounded px-3 py-2 text-sm"
+                rows={3}
+                placeholder="本文"
+              />
+              <div className="grid md:grid-cols-2 gap-2">
+                <input
+                  value={newDiary.photos}
+                  onChange={e => setNewDiary(prev => ({ ...prev, photos: e.target.value }))}
+                  className="border rounded px-3 py-2 text-sm"
+                  placeholder="写真URL (カンマ区切り)"
+                />
+                <input
+                  value={newDiary.hashtags}
+                  onChange={e => setNewDiary(prev => ({ ...prev, hashtags: e.target.value }))}
+                  className="border rounded px-3 py-2 text-sm"
+                  placeholder="ハッシュタグ"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={newDiary.status}
+                  onChange={e => setNewDiary(prev => ({ ...prev, status: e.target.value as DiaryAdminItem['status'] }))}
+                  className="border rounded px-3 py-2 text-sm"
+                >
+                  {DIARY_STATUSES.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <button onClick={createDiary} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">追加</button>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">レビュー管理</h2>
+              <span className="text-xs text-slate-500">{reviews.length} 件</span>
+            </div>
+            <div className="space-y-3">
+              {reviews.map((review, idx) => (
+                <div key={review.id} className="border rounded-lg bg-white shadow-sm p-3 space-y-2">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>{new Date(review.created_at).toLocaleString('ja-JP')}</span>
+                    <span>ID: {review.id.slice(0, 8)}</span>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <select
+                      value={review.status}
+                      onChange={e => updateReviewField(idx, item => ({ ...item, status: e.target.value as ReviewAdminItem['status'] }))}
+                      className="border rounded px-3 py-2 text-sm"
+                    >
+                      {REVIEW_STATUSES.map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={review.score}
+                      onChange={e => updateReviewField(idx, item => ({ ...item, score: Number(e.target.value) }))}
+                      className="border rounded px-3 py-2 text-sm"
+                      placeholder="スコア"
+                    />
+                  </div>
+                  <input
+                    value={review.title || ''}
+                    onChange={e => updateReviewField(idx, item => ({ ...item, title: e.target.value }))}
+                    className="border rounded px-3 py-2 text-sm w-full"
+                    placeholder="タイトル"
+                  />
+                  <textarea
+                    value={review.body}
+                    onChange={e => updateReviewField(idx, item => ({ ...item, body: e.target.value }))}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    rows={3}
+                    placeholder="本文"
+                  />
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <input
+                      value={review.author_alias || ''}
+                      onChange={e => updateReviewField(idx, item => ({ ...item, author_alias: e.target.value }))}
+                      className="border rounded px-3 py-2 text-sm"
+                      placeholder="投稿者"
+                    />
+                    <input
+                      type="date"
+                      value={review.visited_at ? review.visited_at.slice(0, 10) : ''}
+                      onChange={e => updateReviewField(idx, item => ({ ...item, visited_at: e.target.value }))}
+                      className="border rounded px-3 py-2 text-sm"
+                      placeholder="来店日"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => saveReview(idx)} className="px-3 py-1 rounded bg-emerald-600 text-white text-sm">保存</button>
+                    <button onClick={() => deleteReview(review.id)} className="px-3 py-1 rounded text-sm text-red-600 border">削除</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold">新しいレビューを追加</h3>
+              <div className="grid md:grid-cols-2 gap-2">
+                <select
+                  value={newReview.status}
+                  onChange={e => setNewReview(prev => ({ ...prev, status: e.target.value as ReviewAdminItem['status'] }))}
+                  className="border rounded px-3 py-2 text-sm"
+                >
+                  {REVIEW_STATUSES.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={newReview.score}
+                  onChange={e => setNewReview(prev => ({ ...prev, score: Number(e.target.value) }))}
+                  className="border rounded px-3 py-2 text-sm"
+                  placeholder="スコア"
+                />
+              </div>
+              <input
+                value={newReview.title}
+                onChange={e => setNewReview(prev => ({ ...prev, title: e.target.value }))}
+                className="border rounded px-3 py-2 text-sm w-full"
+                placeholder="タイトル"
+              />
+              <textarea
+                value={newReview.body}
+                onChange={e => setNewReview(prev => ({ ...prev, body: e.target.value }))}
+                className="w-full border rounded px-3 py-2 text-sm"
+                rows={3}
+                placeholder="本文"
+              />
+              <div className="grid md:grid-cols-2 gap-2">
+                <input
+                  value={newReview.author_alias}
+                  onChange={e => setNewReview(prev => ({ ...prev, author_alias: e.target.value }))}
+                  className="border rounded px-3 py-2 text-sm"
+                  placeholder="投稿者"
+                />
+                <input
+                  type="date"
+                  value={newReview.visited_at}
+                  onChange={e => setNewReview(prev => ({ ...prev, visited_at: e.target.value }))}
+                  className="border rounded px-3 py-2 text-sm"
+                  placeholder="来店日"
+                />
+              </div>
+              <button onClick={createReview} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">追加</button>
             </div>
           </section>
         </section>

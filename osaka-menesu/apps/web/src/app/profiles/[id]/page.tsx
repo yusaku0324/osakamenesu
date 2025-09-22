@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Metadata } from 'next'
 import Gallery from '@/components/Gallery'
+import ReviewsSection, { type ReviewItem } from '@/components/ReviewsSection'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -61,6 +62,26 @@ type ReviewSummary = {
   highlighted?: HighlightedReview[] | null
 }
 
+type DiaryEntry = {
+  id: string
+  profile_id: string
+  title: string
+  body: string
+  photos: string[]
+  hashtags: string[]
+  created_at: string
+}
+
+type DiaryResponse = {
+  total: number
+  items: DiaryEntry[]
+}
+
+type ReviewsResponse = {
+  total: number
+  items: ReviewItem[]
+}
+
 type ShopDetail = {
   id: string
   name: string
@@ -87,6 +108,8 @@ type ShopDetail = {
 
 const publicBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
 const internalBase = process.env.API_INTERNAL_BASE || 'http://api:8000'
+const REVIEWS_PAGE_SIZE = 10
+const DIARIES_PAGE_SIZE = 6
 
 function getApiBases(): string[] {
   const onServer = typeof window === 'undefined'
@@ -105,8 +128,55 @@ async function fetchShop(id: string): Promise<ShopDetail> {
   notFound()
 }
 
+async function fetchReviews(id: string, pageSize: number): Promise<ReviewsResponse> {
+  const params = new URLSearchParams({ page: '1', page_size: String(pageSize) })
+  for (const base of getApiBases()) {
+    try {
+      const r = await fetch(`${base}/api/v1/shops/${id}/reviews?${params.toString()}`, { cache: 'no-store' })
+      if (r.ok) {
+        const data = await r.json()
+        return {
+          total: Number(data.total ?? 0),
+          items: Array.isArray(data.items) ? (data.items as ReviewItem[]) : [],
+        }
+      }
+    } catch {}
+  }
+  return { total: 0, items: [] }
+}
+
+async function fetchDiaries(id: string, pageSize: number): Promise<DiaryResponse> {
+  const params = new URLSearchParams({ page: '1', page_size: String(pageSize) })
+  for (const base of getApiBases()) {
+    try {
+      const r = await fetch(`${base}/api/v1/shops/${id}/diaries?${params.toString()}`, { cache: 'no-store' })
+      if (r.ok) {
+        const data = await r.json()
+        return {
+          total: Number(data.total ?? 0),
+          items: Array.isArray(data.items)
+            ? (data.items as DiaryEntry[]).map((entry) => ({
+                ...entry,
+                photos: Array.isArray(entry.photos) ? entry.photos : [],
+                hashtags: Array.isArray(entry.hashtags) ? entry.hashtags : [],
+              }))
+            : [],
+        }
+      }
+    } catch {}
+  }
+  return { total: 0, items: [] }
+}
+
 const formatYen = (n: number) => `¥${Number(n).toLocaleString('ja-JP')}`
 const dayFormatter = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })
+const diaryFormatter = new Intl.DateTimeFormat('ja-JP', {
+  month: 'numeric',
+  day: 'numeric',
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+})
 
 function uniquePhotos(photos?: MediaImage[] | null): string[] {
   if (!Array.isArray(photos)) return []
@@ -154,8 +224,16 @@ function formatDayLabel(dateStr: string): string {
   return dayFormatter.format(date)
 }
 
+function formatDiaryTimestamp(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return diaryFormatter.format(date)
+}
+
 export default async function ProfilePage({ params }: Props) {
   const shop = await fetchShop(params.id)
+  const initialReviews = await fetchReviews(params.id, REVIEWS_PAGE_SIZE)
+  const diaryResponse = await fetchDiaries(params.id, DIARIES_PAGE_SIZE)
   const photos = uniquePhotos(shop.photos)
   const badges = shop.badges || []
   const contact = shop.contact || {}
@@ -164,6 +242,9 @@ export default async function ProfilePage({ params }: Props) {
   const menus = Array.isArray(shop.menus) ? shop.menus : []
   const staff = Array.isArray(shop.staff) ? shop.staff : []
   const availability = shop.availability_calendar?.days || []
+  const diaryItems = diaryResponse.items
+  const diaryTotal = diaryResponse.total
+  const hasMoreDiaries = diaryTotal > diaryItems.length
   const defaultSlotLocal = (() => {
     for (const day of availability) {
       if (!day?.slots) continue
@@ -355,33 +436,66 @@ export default async function ProfilePage({ params }: Props) {
         </Section>
       ) : null}
 
-      {shop.reviews && (shop.reviews.average_score || (shop.reviews.highlighted?.length ?? 0) > 0) ? (
+      {diaryItems.length ? (
         <Section
-          title="口コミ"
-          subtitle={shop.reviews?.review_count ? `公開件数 ${shop.reviews.review_count}件` : undefined}
+          title="写メ日記"
+          subtitle="最新の写メ日記から編集部がピックアップ"
           className="shadow-none border border-neutral-borderLight bg-neutral-surface"
-          actions={shop.reviews?.average_score ? <Badge variant="brand">平均 {shop.reviews.average_score.toFixed(1)}★</Badge> : undefined}
         >
-          <div className="grid gap-3 md:grid-cols-2">
-            {(shop.reviews?.highlighted ?? []).slice(0, 4).map((review, idx) => (
-              <Card key={review.review_id ?? idx} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-neutral-text">{review.title}</div>
-                  <Badge variant="success">{review.score}★</Badge>
-                </div>
-                <p className="text-sm leading-relaxed text-neutral-textMuted">{review.body}</p>
-                <div className="flex items-center justify-between text-[11px] text-neutral-textMuted">
-                  <span>{review.author_alias || '匿名ユーザー'}</span>
-                  {review.visited_at ? <span>{formatDayLabel(review.visited_at)}</span> : null}
-                </div>
-              </Card>
-            ))}
-            {shop.reviews && (shop.reviews.highlighted?.length ?? 0) === 0 ? (
-              <Card className="text-sm text-neutral-textMuted">口コミの準備中です。</Card>
-            ) : null}
+          <div className="grid gap-4 md:grid-cols-3">
+            {diaryItems.map((diary) => {
+              const cover = diary.photos?.[0]
+              const digest = shorten(diary.body, 160) ?? diary.body
+              return (
+                <Card key={diary.id} className="space-y-3">
+                  {cover ? (
+                    <Image
+                      src={cover}
+                      alt={`${diary.title}の写真`}
+                      width={400}
+                      height={300}
+                      className="h-40 w-full rounded-card object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-40 w-full items-center justify-center rounded-card bg-neutral-surfaceAlt text-xs text-neutral-textMuted">
+                      写真準備中
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium uppercase tracking-wide text-neutral-textMuted">
+                      {formatDiaryTimestamp(diary.created_at)}
+                    </div>
+                    <h3 className="text-base font-semibold text-neutral-text">{diary.title}</h3>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-textMuted">{digest}</p>
+                    {diary.hashtags?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {diary.hashtags.slice(0, 4).map((tag) => (
+                          <Chip key={tag} variant="subtle">
+                            #{tag}
+                          </Chip>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </Card>
+              )
+            })}
           </div>
+          {hasMoreDiaries ? (
+            <p className="pt-3 text-xs text-neutral-textMuted">続きは近日公開予定です。最新の写メ日記は随時追加されます。</p>
+          ) : null}
         </Section>
       ) : null}
+
+      <ReviewsSection
+        shopId={shop.id}
+        averageScore={shop.reviews?.average_score ?? null}
+        reviewCount={shop.reviews?.review_count ?? null}
+        highlights={shop.reviews?.highlighted ?? null}
+        initialReviews={initialReviews.items}
+        initialTotal={initialReviews.total}
+        initialPageSize={REVIEWS_PAGE_SIZE}
+      />
 
       {menus.length ? (
         <Section

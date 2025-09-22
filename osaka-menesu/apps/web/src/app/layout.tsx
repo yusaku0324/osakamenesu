@@ -1,7 +1,9 @@
 import './globals.css'
 import type { ReactNode } from 'react'
 import Script from 'next/script'
+import { cookies } from 'next/headers'
 import { Noto_Sans_JP } from 'next/font/google'
+import AgeGate from '@/components/AgeGate'
 
 export const metadata = {
   title: '大阪メンエス.com',
@@ -17,6 +19,8 @@ const brandFont = Noto_Sans_JP({
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+  const cookieStore = cookies()
+  const ageVerified = cookieStore.get('age_verified')?.value === '1'
   return (
     <html lang="ja">
       <head>
@@ -44,6 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="/" className="font-bold text-lg tracking-tight text-neutral-text">大阪メンエス.com</a>
           </div>
         </header>
+        <AgeGate initialVerified={ageVerified} />
         {children}
       </body>
     </html>

@@ -19,25 +19,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: osakamenesu/services/api
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install deps
-        run: pip install -q -r requirements.txt
+        run: pip install -q -r requirements-test.txt
 
       - name: Run pytest
-        run: pytest -q
-
-      - name: After-CI full pipeline
-        if: success()
-        run: |
-          curl -sSL https://taskfile.dev/install.sh | sh -s -- -d -b /usr/local/bin
-          task after:after-ci:full
+        run: pytest app/tests -q
 
   integration-test:
     needs:
@@ -45,15 +41,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: osaka-menesu
+        working-directory: osakamenesu
     steps:
       - uses: actions/checkout@v4
 
       - name: Run docker-compose integration tests
         env:
           DOCKER_BUILDKIT: 1
-        run: |
-          docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from api-test api-test
+        run: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from api-test api-test
 
       - name: Teardown integration stack
         if: always()
@@ -63,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: osaka-menesu/apps/web
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
 
@@ -71,12 +66,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: osaka-menesu/apps/web/package-lock.json
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Next.js lint
+      - name: Run lint (placeholder)
         run: npm run lint
 
   admin-e2e:
@@ -85,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: osaka-menesu/apps/web
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
 
@@ -93,7 +88,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: osaka-menesu/apps/web/package-lock.json
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -107,26 +102,3 @@ jobs:
           ADMIN_BASIC_PASS: ${{ secrets.ADMIN_BASIC_PASS }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
         run: npm run test:e2e -- --grep "Admin"
-
-  docker-publish:
-    needs:
-      - test                   # テスト成功時のみ
-      - integration-test
-      - web-lint
-      - admin-e2e
-    if: github.ref == 'refs/heads/main'   # main ブランチ限定
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write             # GHCR へ push
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build & push image
-        env:
-          GHCR_USER: ${{ github.repository_owner }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG=$(git rev-parse --short=8 HEAD)
-          docker build -t ghcr.io/${GHCR_USER}/kakeru:${TAG} .
-          echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GHCR_USER} --password-stdin
-          docker push ghcr.io/${GHCR_USER}/kakeru:${TAG} 

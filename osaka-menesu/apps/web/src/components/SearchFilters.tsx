@@ -12,22 +12,6 @@ type FacetValue = {
 type Facets = Record<string, FacetValue[] | undefined>
 type Props = { init?: Record<string, any>, facets?: Facets }
 
-const AREA_ORDER = [
-  '難波/日本橋',
-  '梅田',
-  '心斎橋',
-  '天王寺',
-  '谷町九丁目',
-  '堺筋本町',
-  '京橋',
-  '北新地',
-  '本町',
-  '南森町',
-  '新大阪',
-  '江坂',
-  '堺',
-]
-
 export default function SearchFilters({ init, facets }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -67,13 +51,25 @@ export default function SearchFilters({ init, facets }: Props) {
   }, [])
 
   const areaOptions = useMemo(() => {
-    const facetList = facets?.area || []
-    const items: Array<[string, string]> = facetList.length
-      ? facetList.map(f => [f.value, f.label || f.value])
-      : AREA_ORDER.map(k => [k, k])
+    const source = facets?.area || []
+    const items = source.map(f => [f.value, f.label || f.value] as [string, string])
     if (area && !items.some(([v]) => v === area)) items.unshift([area, area])
     return items
   }, [area, facets?.area])
+
+  const serviceOptions = useMemo(() => {
+    const source = facets?.service_type || facets?.category || []
+    const items = source.map(f => [f.value, f.label || f.value] as [string, string])
+    if (service && !items.some(([v]) => v === service)) items.unshift([service, service])
+    return items
+  }, [service, facets?.service_type, facets?.category])
+
+  const bodyOptions = useMemo(() => {
+    const source = facets?.body_tags || []
+    const items = source.map(f => [f.value, f.label || `#${f.value}`] as [string, string])
+    if (body && !items.some(([v]) => v === body)) items.unshift([body, body])
+    return items
+  }, [body, facets?.body_tags])
 
   // price (per 60min) unit helpers: 0-10 万円を yen 数値文字列へ/から
   function toUnit(yen: string): string {
@@ -104,10 +100,16 @@ export default function SearchFilters({ init, facets }: Props) {
       </select>
       <select value={service} onChange={e=>setService(e.target.value)} className={fieldClass}>
         <option value="">サービス形態</option>
-        <option value="store">店舗型</option>
-        <option value="dispatch">派遣型</option>
+        {serviceOptions.map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
       </select>
-      <input value={body} onChange={e=>setBody(e.target.value)} placeholder="こだわりキーワード (例: アロマ)" className={fieldClass} />
+      <select value={body} onChange={e=>setBody(e.target.value)} className={fieldClass}>
+        <option value="">こだわりタグ</option>
+        {bodyOptions.map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
       <label className="flex items-center gap-2 rounded-lg border border-transparent bg-neutral-surfaceAlt px-3 py-2 text-sm text-neutral-text">
         <input type="checkbox" checked={today} onChange={e=>setToday(e.target.checked)} className="h-4 w-4" />
         本日出勤のみ
