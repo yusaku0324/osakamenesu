@@ -30,6 +30,7 @@ recruit_posts.log
 .env.development.local
 .env.test.local
 .env.production.local
+.env.osakamenesu
 
 # pytest
 .pytest_cache/
@@ -58,6 +59,11 @@ videos/
 *.db
 *.log
 *.html
+node_modules/
+**/.next/
+**/.turbo/
+**/dist/
+db_data/
 
 # Browser profiles
 profiles/*/
