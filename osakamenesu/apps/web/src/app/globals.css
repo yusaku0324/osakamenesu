@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand-primary: #f97316;
+    --color-brand-primary-dark: #ea580c;
+    --color-brand-secondary: #fb7185;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f8fafc;
+    --color-border-light: #e2e8f0;
+    --color-text: #0f172a;
+    --color-text-muted: #475569;
+    --color-success-bg: #d1fae5;
+    --color-success-text: #047857;
+    --color-danger-bg: #fee2e2;
+    --color-danger-text: #b91c1c;
+    --radius-badge: 9999px;
+    --radius-card: 18px;
+    --radius-section: 24px;
+    --shadow-card: 0 15px 45px rgba(15, 23, 42, 0.08);
+    --shadow-card-hover: 0 20px 60px rgba(15, 23, 42, 0.14);
+  }
+
+  body {
+    @apply bg-[var(--color-surface-alt)] text-[var(--color-text)] font-sans antialiased;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-brand-secondary);
+    outline-offset: 2px;
+  }
+}
+
+/* Hide scrollbars for cleaner galleries */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
