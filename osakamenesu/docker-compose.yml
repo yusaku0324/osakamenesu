@@ -1,0 +1,78 @@
+version: "3.9"
+services:
+  osakamenesu-db:
+    image: postgres:15
+    container_name: osakamenesu_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-osaka_menesu}
+    volumes:
+      - osakamenesu-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-osaka_menesu}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  osakamenesu-meili:
+    image: getmeili/meilisearch:v1.7
+    container_name: osakamenesu_meili
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev_meili_master_key}
+    ports:
+      - "7700:7700"
+    command: ["meilisearch", "--http-addr", "0.0.0.0:7700"]
+
+  osakamenesu-redis:
+    image: redis:7-alpine
+    container_name: osakamenesu_redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - osakamenesu-redis-data:/data
+
+  osakamenesu-api:
+    build: ./services/api
+    container_name: osakamenesu_api
+    env_file:
+      - ./.env
+    environment:
+      RATE_LIMIT_REDIS_ERROR_COOLDOWN: ${RATE_LIMIT_REDIS_ERROR_COOLDOWN:-30}
+    volumes:
+      - ./services/api:/app
+    depends_on:
+      osakamenesu-db:
+        condition: service_healthy
+      osakamenesu-meili:
+        condition: service_started
+      osakamenesu-redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    command: ["bash", "start.sh"]
+
+  osakamenesu-web:
+    build: ./apps/web
+    container_name: osakamenesu_web
+    env_file:
+      - ./.env
+    environment:
+      - API_INTERNAL_BASE=http://osakamenesu-api:8000
+      - NEXT_PUBLIC_API_BASE=/api
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - osakamenesu-api
+
+volumes:
+  osakamenesu-db-data: {}
+  osakamenesu-redis-data: {}
