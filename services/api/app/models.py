@@ -44,6 +44,8 @@ class Profile(Base):
     notification_emails: Mapped[list[str] | None] = mapped_column(ARRAY(String(255)))
     notification_line_token: Mapped[str | None] = mapped_column(String(255))
     notification_slack_webhook: Mapped[str | None] = mapped_column(Text)
+    notification_trigger_status: Mapped[list[str] | None] = mapped_column(ARRAY(String(32)))
+    notification_channels_enabled: Mapped[dict | None] = mapped_column(JSONB)
     discounts: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     ranking_badges: Mapped[list[str] | None] = mapped_column(ARRAY(String(32)))
     ranking_weight: Mapped[int | None] = mapped_column(Integer, index=True)
