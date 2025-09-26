@@ -7,9 +7,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 import httpx
-from fastapi import BackgroundTasks
 
-from . import models
 from .settings import settings
 
 logger = logging.getLogger("app.notifications")
@@ -86,32 +84,6 @@ async def send_reservation_notification(payload: ReservationNotification) -> Non
         await asyncio.gather(*tasks)
     except Exception as exc:
         logger.warning("notification dispatch failed: %s", exc)
-
-
-def queue_reservation_notifications(
-    *,
-    reservation: models.Reservation,
-    shop: Optional[models.Profile] = None,
-    background_tasks: Optional[BackgroundTasks] = None,
-) -> None:
-    payload = ReservationNotification(
-        reservation_id=str(reservation.id),
-        shop_id=str(reservation.shop_id),
-        shop_name=(getattr(shop, "name", None) or getattr(reservation, "shop_name", "")),
-        customer_name=reservation.customer_name,
-        customer_phone=reservation.customer_phone,
-        desired_start=reservation.desired_start.isoformat(),
-        desired_end=reservation.desired_end.isoformat(),
-        status=reservation.status,
-        channel=getattr(reservation, "channel", None),
-        notes=getattr(reservation, "notes", None),
-    )
-
-    coro = send_reservation_notification(payload)
-    if background_tasks is not None:
-        background_tasks.add_task(fire_and_forget, coro)
-    else:
-        fire_and_forget(coro)
 
 
 def fire_and_forget(coro):
