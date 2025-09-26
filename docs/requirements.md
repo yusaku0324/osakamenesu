@@ -132,13 +132,13 @@
 - 会員ログイン／マイページなどエンドユーザアカウント機能は未実装。
 - 店舗自身がセルフ更新する管理 UI は未提供。現状は管理 API/スクリプト経由。
 - 地図検索や駅別フィルタ、広告管理など大規模ポータルにある高度機能は今後の検討領域。
-- 予約フォーム送信後の店舗通知（メール/SMS等）は未実装。現在は DB への登録のみ。
+- 予約フォーム送信後の店舗通知は、FastAPI `/api/dashboard/shops/{profile_id}/notifications` で設定したチャネル（メール/LINE/Slack）へ BackgroundTasks で送信予定。
 
-### 3.4 通知設定（メール）
+### 3.4 通知設定
 
-- `.env` に SMTP 関連の設定を追加（`NOTIFY_SMTP_HOST` / `USER` / `PASSWORD` / `PORT` / `USE_TLS` / `USE_SSL`）。
-- 送信元メールアドレスを `NOTIFY_FROM_EMAIL` に設定。複数の運営宛先は `ADMIN_NOTIFICATION_EMAILS` へカンマ区切りで登録。
-- 店舗ごとの通知先は `profiles.notification_emails` / `notification_line_token` / `notification_slack_webhook` カラムで管理し、管理 API から更新可能。
+- 共通で利用する SMTP などの資格情報は `.env` で管理する（例: `NOTIFY_SMTP_HOST`, `NOTIFY_FROM_EMAIL`）。
+- 店舗ごとの通知有効可否・宛先は FastAPI `/api/dashboard/shops/{profile_id}/notifications` API（GET/PUT/POST test）を介して per-profile で更新する。
+- `profiles` テーブルの `notification_trigger_status`（配列）と `notification_channels_enabled`（JSONB）で、どの予約ステータスでどのチャネルを送るかを定義する。
 
 ---
 
