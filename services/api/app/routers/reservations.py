@@ -89,9 +89,9 @@ async def _check_overlap(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_reservation(
     payload: ReservationCreateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_session),
     user: Optional[models.User] = Depends(get_optional_user),
-    background_tasks: BackgroundTasks,
 ):
     if payload.desired_end <= payload.desired_start:
         raise HTTPException(status_code=400, detail="desired_end must be after desired_start")
