@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, conint, constr, EmailStr
+from pydantic import BaseModel, Field, conint, constr, EmailStr, field_validator, model_validator
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from datetime import datetime, date
@@ -508,3 +508,116 @@ class ShopAdminDetail(BaseModel):
     menus: List[MenuItem] = Field(default_factory=list)
     staff: List[StaffSummary] = Field(default_factory=list)
     availability: List[AvailabilityDay] = Field(default_factory=list)
+
+
+DASHBOARD_ALLOWED_NOTIFICATION_STATUSES = {
+    "pending",
+    "confirmed",
+    "declined",
+    "cancelled",
+    "expired",
+}
+
+SlackWebhookStr = constr(max_length=200)
+LineNotifyTokenStr = constr(min_length=40, max_length=60, pattern=r"^[0-9A-Za-z_-]+$")
+
+
+class DashboardNotificationChannelEmail(BaseModel):
+    enabled: bool = False
+    recipients: List[EmailStr] = Field(default_factory=list)
+
+    @field_validator("recipients")
+    @classmethod
+    def validate_recipients(cls, recipients: List[EmailStr]) -> List[EmailStr]:
+        if len(recipients) > 5:
+            raise ValueError("メール宛先は最大5件まで設定可能です")
+        lowered = [r.lower() for r in recipients]
+        if len(lowered) != len(set(lowered)):
+            raise ValueError("同じメールアドレスは重複して設定できません")
+        return recipients
+
+    @model_validator(mode="after")
+    def ensure_enabled_has_recipients(self) -> "DashboardNotificationChannelEmail":
+        if self.enabled and not self.recipients:
+            raise ValueError("メール通知を有効化するには宛先を設定してください")
+        return self
+
+
+class DashboardNotificationChannelLine(BaseModel):
+    enabled: bool = False
+    token: Optional[LineNotifyTokenStr] = None
+
+    @field_validator("token", mode="before")
+    @classmethod
+    def normalize_token(cls, value: Optional[str]) -> Optional[str]:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def ensure_enabled_has_token(self) -> "DashboardNotificationChannelLine":
+        if self.enabled and not self.token:
+            raise ValueError("LINE 通知を有効化するにはトークンを入力してください")
+        return self
+
+
+class DashboardNotificationChannelSlack(BaseModel):
+    enabled: bool = False
+    webhook_url: Optional[SlackWebhookStr] = None
+
+    @field_validator("webhook_url")
+    @classmethod
+    def validate_webhook(cls, url: Optional[str]) -> Optional[str]:
+        if url is None:
+            return url
+        if not url.startswith("https://hooks.slack.com/"):
+            raise ValueError("Slack Webhook URL は https://hooks.slack.com/ で始まる必要があります")
+        return url
+
+    @model_validator(mode="after")
+    def ensure_enabled_has_webhook(self) -> "DashboardNotificationChannelSlack":
+        if self.enabled and not self.webhook_url:
+            raise ValueError("Slack 通知を有効化するには Webhook URL を入力してください")
+        return self
+
+
+class DashboardNotificationChannels(BaseModel):
+    email: DashboardNotificationChannelEmail = Field(default_factory=DashboardNotificationChannelEmail)
+    line: DashboardNotificationChannelLine = Field(default_factory=DashboardNotificationChannelLine)
+    slack: DashboardNotificationChannelSlack = Field(default_factory=DashboardNotificationChannelSlack)
+
+    def any_enabled(self) -> bool:
+        return any((self.email.enabled, self.line.enabled, self.slack.enabled))
+
+
+class DashboardNotificationSettingsBase(BaseModel):
+    channels: DashboardNotificationChannels
+    trigger_status: List[Literal['pending', 'confirmed', 'declined', 'cancelled', 'expired']] = Field(default_factory=list)
+
+    @field_validator("trigger_status")
+    @classmethod
+    def validate_trigger_status(cls, statuses: List[str]) -> List[str]:
+        seen: List[str] = []
+        for status in statuses:
+            if status not in DASHBOARD_ALLOWED_NOTIFICATION_STATUSES:
+                raise ValueError(f"未対応のステータスが指定されました: {status}")
+            if status not in seen:
+                seen.append(status)
+        return seen
+
+
+class DashboardNotificationSettingsInput(DashboardNotificationSettingsBase):
+    @model_validator(mode="after")
+    def ensure_configuration_valid(self) -> "DashboardNotificationSettingsInput":
+        if not self.channels.any_enabled():
+            raise ValueError("少なくとも1つの通知チャネルを有効化してください")
+        return self
+
+
+class DashboardNotificationSettingsUpdate(DashboardNotificationSettingsInput):
+    updated_at: datetime
+
+
+class DashboardNotificationSettingsResponse(DashboardNotificationSettingsBase):
+    profile_id: UUID
+    updated_at: datetime
