@@ -1,8 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     database_url: str = "postgresql+asyncpg://app:app@osakamenesu-db:5432/osaka_menesu"
     api_origin: str = "http://localhost:3000"
     meili_host: str = "http://osakamenesu-meili:7700"
@@ -26,5 +25,10 @@ class Settings(BaseSettings):
     auth_magic_link_redirect_path: str = "/auth/complete"
     auth_magic_link_debug: bool = True
     site_base_url: str | None = None
+
+    class Config:
+        env_file = ".env"
+        env_prefix = ""
+
 
 settings = Settings()
