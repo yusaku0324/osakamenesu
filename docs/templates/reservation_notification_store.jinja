@@ -1,0 +1,29 @@
+件名: [予約リクエスト] {{ shop_name }} {{ start_local.strftime('%m/%d %H:%M') }}
+
+本文:
+{{ shop_name }} 様
+
+以下の内容で予約リクエストを受け付けました。
+
+---
+■ 予約概要
+- 予約ID: {{ reservation_id }}
+- 希望日時: {{ start_local.strftime('%Y-%m-%d %H:%M') }} 〜 {{ end_local.strftime('%H:%M') }}
+- 予約チャネル: {{ channel or 'web' }}
+- 予約メモ: {{ notes or '（なし）' }}
+- マーケティング連絡可否: {{ 'はい' if marketing_opt_in else 'いいえ' }}
+
+■ お客様情報
+- お名前: {{ customer_name or '未入力' }}
+- 電話番号: {{ customer_phone or '未入力' }}
+- メールアドレス: {{ customer_email or '未入力' }}
+{% if customer_line_id %}- LINE ID: {{ customer_line_id }}
+{% endif %}{% if customer_remark %}- 備考: {{ customer_remark }}
+{% endif %}
+---
+
+{% if admin_link %}管理画面で確認: {{ admin_link }}
+{% endif %}{% if followup_note %}
+{{ followup_note }}{% endif %}
+
+※このメールは自動送信です。心当たりが無い場合は破棄してください。

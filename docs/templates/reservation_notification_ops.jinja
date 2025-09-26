@@ -1,0 +1,32 @@
+件名: [予約受信通知] {{ shop_name }} {{ start_local.strftime('%m/%d %H:%M') }}
+
+本文:
+運営チーム各位
+
+サイト経由で下記の予約リクエストが登録されました。
+
+---
+■ 予約概要
+- 予約ID: {{ reservation_id }}
+- 店舗名: {{ shop_name }} ({{ shop_id }})
+- 希望日時: {{ start_local.strftime('%Y-%m-%d %H:%M') }} 〜 {{ end_local.strftime('%H:%M') }}
+- 予約ステータス: {{ status }}
+- チャンネル: {{ channel or 'web' }}
+- メモ: {{ notes or '（なし）' }}
+- マーケティング連絡可否: {{ 'はい' if marketing_opt_in else 'いいえ' }}
+
+■ お客様情報
+- 名前: {{ customer_name or '未入力' }}
+- 電話番号: {{ customer_phone or '未入力' }}
+- メール: {{ customer_email or '未入力' }}
+{% if customer_line_id %}- LINE ID: {{ customer_line_id }}
+{% endif %}{% if customer_remark %}- 備考: {{ customer_remark }}
+{% endif %}
+---
+
+担当者確認後、店舗側で反応がない場合はフォローアップをご検討ください。
+{% if admin_link %}
+管理画面: {{ admin_link }}
+{% endif %}
+
+※このメールは自動送信です。
