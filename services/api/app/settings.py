@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import EmailStr, field_validator, Field
 
 
 class Settings(BaseSettings):
@@ -14,6 +15,14 @@ class Settings(BaseSettings):
     slack_webhook_url: str | None = None
     notify_email_endpoint: str | None = None
     notify_line_endpoint: str | None = None
+    notify_smtp_host: str | None = None
+    notify_smtp_port: int = 587
+    notify_smtp_username: str | None = None
+    notify_smtp_password: str | None = None
+    notify_smtp_use_tls: bool = True
+    notify_smtp_use_ssl: bool = False
+    notify_from_email: EmailStr | None = None
+    admin_notification_emails: list[EmailStr] = Field(default_factory=list)
     escalation_pending_threshold_minutes: int = 30
     escalation_check_interval_minutes: int = 5
     auth_magic_link_expire_minutes: int = 15
@@ -29,6 +38,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_prefix = ""
+
+    @field_validator("admin_notification_emails", mode="before")
+    @classmethod
+    def _parse_admin_emails(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [email.strip() for email in value.split(",") if email.strip()]
+        return value
 
 
 settings = Settings()

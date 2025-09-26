@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from ..schemas import (
     ReservationUpdateRequest,
 )
 from ..deps import require_admin, audit_admin, get_optional_user
+from ..notifications import queue_reservation_notifications
 
 
 router = APIRouter(prefix="/api/v1/reservations", tags=["reservations"])
@@ -90,6 +91,7 @@ async def create_reservation(
     payload: ReservationCreateRequest,
     db: AsyncSession = Depends(get_session),
     user: Optional[models.User] = Depends(get_optional_user),
+    background_tasks: BackgroundTasks,
 ):
     if payload.desired_end <= payload.desired_start:
         raise HTTPException(status_code=400, detail="desired_end must be after desired_start")
@@ -132,6 +134,10 @@ async def create_reservation(
     await db.commit()
     await db.refresh(reservation)
     await db.refresh(reservation, attribute_names=["status_events"])
+
+    shop = await db.get(models.Profile, reservation.shop_id)
+    if shop:
+        queue_reservation_notifications(reservation, shop, background_tasks)
 
     return _reservation_to_schema(reservation).model_dump()
 

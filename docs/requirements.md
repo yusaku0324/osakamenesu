@@ -134,6 +134,12 @@
 - 地図検索や駅別フィルタ、広告管理など大規模ポータルにある高度機能は今後の検討領域。
 - 予約フォーム送信後の店舗通知（メール/SMS等）は未実装。現在は DB への登録のみ。
 
+### 3.4 通知設定（メール）
+
+- `.env` に SMTP 関連の設定を追加（`NOTIFY_SMTP_HOST` / `USER` / `PASSWORD` / `PORT` / `USE_TLS` / `USE_SSL`）。
+- 送信元メールアドレスを `NOTIFY_FROM_EMAIL` に設定。複数の運営宛先は `ADMIN_NOTIFICATION_EMAILS` へカンマ区切りで登録。
+- 店舗ごとの通知先は `profiles.notification_emails` / `notification_line_token` / `notification_slack_webhook` カラムで管理し、管理 API から更新可能。
+
 ---
 
 本ドキュメントは現行実装をベースにした要件洗い出しです。仕様変更時は該当セクションを更新してください。
