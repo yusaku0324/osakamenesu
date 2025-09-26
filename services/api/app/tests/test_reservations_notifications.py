@@ -14,6 +14,23 @@ os.chdir(ROOT)
 sys.path.insert(0, str(ROOT / "services" / "api"))
 
 
+import types
+
+dummy_settings_module = types.ModuleType("app.settings")
+
+
+class _DummySettings:
+    def __init__(self) -> None:
+        self.database_url = "sqlite+aiosqlite:///:memory:"
+        self.admin_notification_emails: list[str] = []
+        self.auth_session_cookie_name = "osakamenesu_session"
+
+
+dummy_settings_module.Settings = _DummySettings  # type: ignore[attr-defined]
+dummy_settings_module.settings = _DummySettings()
+sys.modules["app.settings"] = dummy_settings_module
+
+
 from app import models  # type: ignore  # noqa: E402
 from app.routers import reservations as reservations_router  # type: ignore  # noqa: E402
 from app.schemas import ReservationCreateRequest, ReservationCustomerInput  # type: ignore  # noqa: E402
@@ -47,6 +64,13 @@ class FakeSession:
 
     def add(self, obj):  # pragma: no cover
         if isinstance(obj, models.Reservation):
+            if obj.id is None:
+                obj.id = uuid4()
+            now = datetime.now(timezone.utc)
+            if obj.created_at is None:
+                obj.created_at = now
+            if obj.updated_at is None:
+                obj.updated_at = now
             self.reservations.append(obj)
 
     async def commit(self):  # pragma: no cover
