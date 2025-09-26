@@ -12,6 +12,13 @@
 | BL-006 | 観測性強化（エラーレポート・トラッキング） | **P2** | GA のみだと API 障害や予約失敗が検知できない。品質リスク。 | - Sentry 等の APM 導入検討<br>- API ログの構造化（JSON logging）<br>- 予約エラー時の告知チャネル整備 | 優先度は中程度だが早めに仕込みたい。通知基盤とセットで進める。 |
 | BL-007 | コンテンツ SEO / CMS 連携 | **P3** | 初めての方向け記事やブログを手作業で更新予定。CMS 化で更新効率を上げたい。 | - CMS 選定（Contentful / microCMS / Notion API 等）<br>- `/demo/blog` の静的生成/ISR 設計<br>- 記事コンポーネントのデザイン整備 | 他優先項目の後。MVP 成功後に強化。 |
 
+### 2025-09-26 更新メモ
+
+- BL-001 予約通知連携のバックエンドは実装済み（FastAPI `/api/dashboard/shops/{profile_id}/notifications` の GET/PUT とテスト送信 POST、認可依存 `get_dashboard_profile`、Alembic `0011_extend_notif_settings`）。Phase 2 ではこの API を使ったダッシュボード UI を優先着手する。
+- 依存管理を更新：`services/api/requirements.txt` に `httpx==0.28.1` を追加し、通知送信や API 起動での必須ライブラリを明示。テスト環境では `services/api/requirements-test.txt` に `aiosqlite==0.21.0` を固定して SQLite in-memory 実行でも動作するよう調整。
+- 新規テスト `app/tests/test_dashboard_notifications.py` と `app/tests/test_reservations_notifications.py` で通知設定 API のバリデーション／通知キュー呼び出しをカバー済み。追加開発時はこれらを参考にケースを拡張する。
+- `.env` でのチャネル切替から per-profile 設定へ移行したため、運用手順書では「通知先はダッシュボード API で管理」へ記載変更が必要。
+
 ## 短期ロードマップ（通知 → ダッシュボード → 会員 → 地図検索）
 
 | フェーズ | 期間目安 | 主担当 | 主要アウトプット | 依存・備考 |
