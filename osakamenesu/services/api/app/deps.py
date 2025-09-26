@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Iterable
 from datetime import datetime, UTC
+from uuid import UUID
 
 from fastapi import Header, HTTPException, Depends, Request
 from sqlalchemy import select
@@ -83,3 +84,41 @@ async def require_user(user: Optional[models.User] = Depends(get_optional_user))
     if not user:
         raise HTTPException(status_code=401, detail="not_authenticated")
     return user
+
+
+def _normalize_uuid_strings(values: Iterable[str]) -> set[str]:
+    normalized: set[str] = set()
+    for value in values:
+        if not value:
+            continue
+        try:
+            normalized.add(str(UUID(str(value))))
+        except ValueError:
+            continue
+    return normalized
+
+
+async def get_dashboard_profile(
+    profile_id: UUID,
+    user: models.User = Depends(require_user),
+    db: AsyncSession = Depends(get_session),
+) -> models.Profile:
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile_not_found")
+
+    contact = profile.contact_json or {}
+    allowed_raw = contact.get("dashboard_user_ids") if isinstance(contact, dict) else None
+    if isinstance(allowed_raw, (list, tuple, set)):
+        candidate_ids = allowed_raw
+    else:
+        candidate_ids = []
+    allowed_ids = _normalize_uuid_strings(candidate_ids)
+
+    if not allowed_ids:
+        raise HTTPException(status_code=403, detail="dashboard_access_not_configured")
+
+    if str(user.id) not in allowed_ids:
+        raise HTTPException(status_code=403, detail="dashboard_access_denied")
+
+    return profile

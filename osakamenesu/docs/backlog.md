@@ -28,3 +28,115 @@
 - @pm-lead がスプリント開始時にタスク分解（チケット化）とバーンダウンの管理を担当。
 - 依存タスク（例: 通知で利用するメール送信サービス契約）はオーナーが別途 Issues/TODO として起票。
 - レビューは週次（火曜）スタンドアップで進捗共有し、遅延時は優先度調整を行う。
+
+### BL-002 ダッシュボード通知設定 詳細仕様
+
+Dashboard の初期スコープでは「通知設定」タブを MVP として提供し、店舗オーナー自身が送信チャネルを切り替えられるようにする。以下に UI フローと API 仕様、バリデーション/エラー整理を記載する。
+
+#### 想定ユーザーフロー
+
+1. 店舗担当者が `/dashboard/login` でメールアドレスを入力し、Magic Link でサインイン（Supabase Auth）。
+2. 認証後 `/dashboard` へ遷移し、複数店舗を持つアカウントは「店舗選択ダイアログ」で `profile_id` を選択。
+3. サイドバーから「通知設定」を選択。`GET /api/dashboard/shops/{profile_id}/notifications` を叩き既存設定を取得。
+4. フォームでメール/LINE/Slack の宛先や有効・無効を編集。リアルタイムバリデーションでエラー表示。
+5. 「テスト送信」ボタンを押すと `POST /api/dashboard/shops/{profile_id}/notifications/test` を呼び、成功/失敗をトースト表示。
+6. 「保存」で `PUT /api/dashboard/shops/{profile_id}/notifications` を実行し、成功時はグリーンのサクセスメッセージと直近保存者/時刻を更新。
+7. API が `409`（楽観ロック）を返した場合はダイアログで「他の担当者が更新しました。再読み込みしてから編集してください」と案内。
+8. `401/403` 発生時はグローバルエラーバナーを表示し、ログアウト→再ログインを促す。
+
+#### フォーム構成とバリデーション
+
+| UI 要素 | API フィールド | 入力形式 / 制約 | バリデーションメッセージ例 |
+| --- | --- | --- | --- |
+| 通知メール（最大 5 件） | `emails: string[]` | RFC 準拠メール形式。重複禁止。最大 5 件。 | `有効なメールアドレスを入力してください` / `同じメールアドレスは 1 度だけ設定できます` |
+| メール送信 ON/OFF | `channels.email.enabled: bool` | 少なくとも 1 チャネルが ON であること。 | `少なくとも 1 つの通知チャネルを有効化してください` |
+| LINE Notify トークン | `channels.line.token: string` | 43 文字の英数字・記号 `[-_+]` のみ。空は無効扱い。 | `LINE Notify トークン形式が不正です` |
+| LINE 通知 ON/OFF | `channels.line.enabled: bool` | `enabled=true` の場合トークン必須。 | `LINE 通知を有効化するにはトークンを入力してください` |
+| Slack Webhook URL | `channels.slack.webhook_url: string` | `https://hooks.slack.com/` で始まる URL。最大 200 文字。 | `Slack Webhook URL が正しくありません` |
+| Slack 通知 ON/OFF | `channels.slack.enabled: bool` | `enabled=true` の場合 URL 必須。 | `Slack 通知を有効化するには Webhook URL を入力してください` |
+| 予約状態フィルタ | `trigger_status: string[]` | `pending`, `confirmed`, `declined`, `cancelled`, `expired` の組み合わせ。空は全て。 | `通知対象ステータスを選択してください` |
+| テスト送信ボタン | - | 押下中はローディング。API エラーはそのままトースト表示。 | `通知の送信に失敗しました。入力内容を確認してください` |
+
+- 既存 DB への書き込みは `profiles.notify_emails (TEXT[])`, `profiles.notify_line_token (TEXT)`, `profiles.notify_slack_webhook (TEXT)` などの列（別途マイグレーション）を想定。`updated_at` をレスポンスに含めダッシュボードで楽観ロック比較に使用する。
+- UI では空配列/空文字を「未設定」とし、保存時に API へ null ではなく空値として送信。
+- 全チャネル OFF + 宛先空の場合は `422` を返す方針。
+
+#### API 仕様（案）
+
+```
+GET  /api/dashboard/shops/{profile_id}/notifications
+200 OK
+{
+  "profile_id": "uuid",
+  "updated_at": "2025-09-25T12:34:56Z",
+  "channels": {
+    "email": {"enabled": true, "recipients": ["foo@example.com", "bar@example.com"]},
+    "line": {"enabled": false, "token": null},
+    "slack": {"enabled": true, "webhook_url": "https://hooks.slack.com/..."}
+  },
+  "trigger_status": ["pending", "confirmed"]
+}
+
+PUT  /api/dashboard/shops/{profile_id}/notifications
+Request
+{
+  "updated_at": "2025-09-25T12:34:56Z",  // 楽観ロック用。最新と異なる場合は 409。
+  "channels": {
+    "email": {"enabled": true, "recipients": ["owner@example.com"]},
+    "line": {"enabled": false, "token": null},
+    "slack": {"enabled": false, "webhook_url": null}
+  },
+  "trigger_status": ["pending", "confirmed", "cancelled"]
+}
+
+Responses
+- 200: 保存成功。最新値と `updated_at` を返却。
+- 400: JSON 構造が仕様外（例: recipients が文字列）。
+- 401/403: 認証 or 権限不足。店舗紐付けが無い場合を含む。
+- 404: `profile_id` が存在しない or ログインユーザーと紐付いていない。
+- 409: `updated_at` 不一致（他ユーザーが更新）。レスポンスには最新 `updated_at` と差分フィールド。
+- 422: バリデーションエラー（チャネル宛先不足/形式不正）。
+
+POST /api/dashboard/shops/{profile_id}/notifications/test
+Request body は PUT と同構造（未保存の値で試し送信）。
+- 204: テスト送信成功（本文無し）。
+- 400/422: 入力不正。
+- 424: 下位通知サービスで失敗した場合。`{"detail": "LINE Notify authentication failed"}` などを返す。
+```
+
+#### エラーケース UI ハンドリング
+
+- `422` → 各フィールドにエラーテキストを表示（API の `detail` から対象フィールドを判別）。フォーム全体には「保存に失敗しました」トースト。
+- `409` → モーダルで「最新の内容を取得」ボタンを出し、押下で `GET` を再実行してフォームを更新。
+- `424`（テスト送信） → トーストで失敗理由を表示し、`response.detail` が `line_token_invalid` などのコードなら該当フィールドに補助テキスト。
+- ネットワークエラー → 共通エラーバナーを表示し再試行リンクを提示。10 秒後に自動で閉じる。
+
+#### 実装タスクメモ
+
+- [ ] Profiles テーブルに通知関連列を追加するマイグレーション（null 許容、初期値空）。
+- [ ] FastAPI 側に `DashboardNotificationSettings` スキーマ（Pydantic）を追加し、認証済みユーザーとプロファイルのマッピングを検証する依存性を実装。
+- [ ] Next.js Dashboard に `NotificationSettingsForm` コンポーネントを新設。React Hook Form + Zod で上記バリデーションを定義し、API エラーをマージ。
+- [ ] テスト送信エンドポイントは通知キューと同じパスを使い、予約 ID ダミー/`BackgroundTasks` で即時送信可否を判定する実装を流用。
+
+#### バックエンド実装チケット案
+
+1. **API-DB-001: Profiles 通知設定カラム追加**  
+   - 作業内容: `profiles` テーブルに `notify_email_recipients (TEXT[])`, `notify_line_token (TEXT)`, `notify_slack_webhook (TEXT)`, `notify_trigger_status (TEXT[])`, `notify_channels_enabled (JSONB)` などの列を追加。既存モデル/スキーマを更新し、空配列・null の扱いを統一。  
+   - 受け入れ基準: Alembic マイグレーションが適用可能で、既存データに影響しない。`models.Profile` で新列が参照できる。  
+   - 依存: なし（最優先で着手）。
+
+2. **API-DASH-002: 通知設定 API 実装**  
+   - 詳細タスク:  
+     1. Pydantic スキーマ定義 (`DashboardNotificationSettings`, `DashboardNotificationChannels`) を `app/schemas.py` へ追加し、メールアドレス・Slack URL・LINE トークン形式のバリデーションをカバー。  
+     2. ダッシュボード用依存関数を `app/deps.py` に実装し、認証済みユーザーがアクセス可能な `profile_id` を検証。認可失敗時は `HTTPException 403/404`。  
+     3. 新規ルーター `app/routers/dashboard_notifications.py` を追加し、`GET/PUT/POST test` を実装。`PUT` では `updated_at` の楽観ロック比較を行い、競合時は `409` と最新データを返す。  
+     4. `POST .../test` は投入された値で `queue_reservation_notifications` に渡す前検証を共通化し、送信せずにスタブ（または後続タスクで実装予定のダミー送信）を返す構造にする。  
+     5. FastAPI ルーターを `app/main.py` へ組み込み、`api/v1/dashboard` など名前空間を決定。  
+     6. ユニットテスト（Pydantic バリデーション）と API テスト（401/403/404/409/422 ケース）を `app/tests` 配下に追加。  
+   - 受け入れ基準: テストがグリーンで、未認証・権限外アクセスは適切な 401/403/404 を返す。  
+   - 依存: API-DB-001（新カラムが必要）。
+
+3. **API-NOTIFY-003: 予約通知処理の設定参照切り替え**  
+   - 作業内容: `queue_reservation_notifications` を中心に、通知送信時に `profiles` の設定を参照するようリファクタ。チャネル別に無効化/宛先未設定時のスキップ、グローバル環境変数からのフォールバックを設計。テスト送信 API と共通化したバリデーションロジックを使用。  
+   - 受け入れ基準: 既存の通知テストが改修後も成功し、新たに per-profile 設定をカバーするテストが追加される。  
+   - 依存: API-DB-001, API-DASH-002（保存された設定を利用）。

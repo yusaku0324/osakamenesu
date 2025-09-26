@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from ..schemas import (
     ReservationUpdateRequest,
 )
 from ..deps import require_admin, audit_admin, get_optional_user
+from ..notifications import queue_reservation_notifications
 
 
 router = APIRouter(prefix="/api/v1/reservations", tags=["reservations"])
@@ -60,10 +61,11 @@ def _reservation_to_schema(reservation: models.Reservation) -> ReservationSchema
     )
 
 
-async def _ensure_shop(db: AsyncSession, shop_id: UUID) -> None:
+async def _ensure_shop(db: AsyncSession, shop_id: UUID) -> models.Profile:
     exists = await db.get(models.Profile, shop_id)
     if not exists:
         raise HTTPException(status_code=404, detail="shop not found")
+    return exists
 
 
 async def _check_overlap(
@@ -88,13 +90,14 @@ async def _check_overlap(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_reservation(
     payload: ReservationCreateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_session),
     user: Optional[models.User] = Depends(get_optional_user),
 ):
     if payload.desired_end <= payload.desired_start:
         raise HTTPException(status_code=400, detail="desired_end must be after desired_start")
 
-    await _ensure_shop(db, payload.shop_id)
+    shop = await _ensure_shop(db, payload.shop_id)
 
     has_overlap = await _check_overlap(db, payload.shop_id, payload.desired_start, payload.desired_end)
     if has_overlap:
@@ -132,6 +135,12 @@ async def create_reservation(
     await db.commit()
     await db.refresh(reservation)
     await db.refresh(reservation, attribute_names=["status_events"])
+
+    queue_reservation_notifications(
+        reservation=reservation,
+        shop=shop,
+        background_tasks=background_tasks,
+    )
 
     return _reservation_to_schema(reservation).model_dump()
 
