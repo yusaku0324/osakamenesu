@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, conint, constr, EmailStr, HttpUrl
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
@@ -523,5 +525,3 @@ class ShopAdminDetail(BaseModel):
     availability: List[AvailabilityDay] = Field(default_factory=list)
     notifications: ShopNotificationSettings = Field(default_factory=ShopNotificationSettings)
 
-
-ShopContentUpdate.update_forward_refs(ShopNotificationUpdate=ShopNotificationUpdate)
