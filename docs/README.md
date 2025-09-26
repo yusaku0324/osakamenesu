@@ -85,3 +85,9 @@ YAMLには以下の情報を記載できます:
 4. `/api/admin/reindex` で Meilisearch を同期
 
 ※ `services/api/requirements.txt` に `PyYAML` を追加したので、`pip install -r requirements.txt` の再実行が必要です。
+
+## 通知設定の運用
+
+- 予約通知の宛先・チャネルはプロフィール単位で FastAPI `/api/dashboard/shops/{profile_id}/notifications` を通じて設定します（GET で取得、PUT で更新、POST `/test` でバリデーションのみ実行）。
+- `.env` では共通で利用する資格情報（例: `NOTIFY_SMTP_HOST`, `NOTIFY_FROM_EMAIL`）のみを管理し、店舗ごとのメールアドレスや LINE/Slack トークンは API で登録します。
+- `profiles.notification_trigger_status`（通知対象ステータスの配列）と `profiles.notification_channels_enabled`（メール/LINE/Slack の有効フラグ）を利用するため、更新リクエストには `updated_at` を渡して楽観ロックを通過させてください。
