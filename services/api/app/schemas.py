@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, conint, constr, EmailStr
+from pydantic import BaseModel, Field, conint, constr, EmailStr, HttpUrl
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from datetime import datetime, date
@@ -478,6 +478,19 @@ class ShopContentUpdate(BaseModel):
     catch_copy: Optional[str] = None
     address: Optional[str] = None
     photos: Optional[List[str]] = None
+    notifications: Optional["ShopNotificationUpdate"] = None
+
+
+class ShopNotificationSettings(BaseModel):
+    emails: List[EmailStr] = Field(default_factory=list)
+    slack_webhook_url: Optional[HttpUrl] = None
+    line_notify_token: Optional[str] = Field(default=None, max_length=255)
+
+
+class ShopNotificationUpdate(BaseModel):
+    emails: Optional[List[EmailStr]] = None
+    slack_webhook_url: Optional[HttpUrl] = None
+    line_notify_token: Optional[str] = Field(default=None, max_length=255)
 
 
 class ShopAdminSummary(BaseModel):
@@ -508,3 +521,7 @@ class ShopAdminDetail(BaseModel):
     menus: List[MenuItem] = Field(default_factory=list)
     staff: List[StaffSummary] = Field(default_factory=list)
     availability: List[AvailabilityDay] = Field(default_factory=list)
+    notifications: ShopNotificationSettings = Field(default_factory=ShopNotificationSettings)
+
+
+ShopContentUpdate.update_forward_refs(ShopNotificationUpdate=ShopNotificationUpdate)

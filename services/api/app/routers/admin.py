@@ -22,6 +22,7 @@ from ..schemas import (
     ShopAdminSummary,
     ShopAdminList,
     ShopAdminDetail,
+    ShopNotificationSettings,
     MenuItem,
     StaffSummary,
     ReviewListResponse,
@@ -31,6 +32,7 @@ from ..schemas import (
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
 from typing import Optional, Any
+from pydantic import EmailStr
 from ..deps import require_admin, audit_admin
 from .shops import _fetch_availability, _normalize_menus, _normalize_staff, serialize_review
 
@@ -478,6 +480,11 @@ async def admin_get_shop(shop_id: UUID, db: AsyncSession = Depends(get_session))
         menus=menus,
         staff=staff_members,
         availability=availability,
+        notifications=ShopNotificationSettings(
+            emails=[EmailStr(e) for e in profile.notification_emails or []],
+            slack_webhook_url=profile.notification_slack_webhook,
+            line_notify_token=profile.notification_line_token,
+        ),
     )
 
 
@@ -546,6 +553,17 @@ async def admin_update_shop_content(
     if payload.service_tags is not None:
         contact_json["service_tags"] = payload.service_tags
         profile.body_tags = payload.service_tags
+
+    if payload.notifications is not None:
+        notif = payload.notifications
+        if "emails" in notif.__fields_set__:
+            profile.notification_emails = notif.emails or []
+        if "slack_webhook_url" in notif.__fields_set__:
+            profile.notification_slack_webhook = (
+                str(notif.slack_webhook_url) if notif.slack_webhook_url else None
+            )
+        if "line_notify_token" in notif.__fields_set__:
+            profile.notification_line_token = notif.line_notify_token or None
 
     profile.contact_json = contact_json
 
