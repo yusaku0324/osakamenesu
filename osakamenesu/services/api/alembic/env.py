@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import MutableMapping
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 # Alembic config holds values from alembic.ini when the CLI runs this module.
 config = context.config
@@ -85,6 +85,45 @@ def _configure_sqlalchemy_section() -> MutableMapping[str, str]:
     return configuration
 
 
+
+def _ensure_version_column_length(connection, *, min_length: int = 64) -> None:
+    """Ensure alembic_version.version_num can store longer revision IDs."""
+    version_table = config.get_main_option("version_table", "alembic_version")
+    schema = config.get_main_option("version_table_schema")
+
+    if schema:
+        length_sql = text(
+            """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_name = :table
+              AND table_schema = :schema
+              AND column_name = 'version_num'
+            """
+        )
+        params = {"table": version_table, "schema": schema}
+    else:
+        length_sql = text(
+            """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_name = :table
+              AND column_name = 'version_num'
+            """
+        )
+        params = {"table": version_table}
+
+    result = connection.execute(length_sql, params).scalar()
+    if result is None:
+        return
+
+    if result < min_length:
+        table_ref = f"{schema}.{version_table}" if schema else version_table
+        alter_sql = text(
+            f"ALTER TABLE {table_ref} ALTER COLUMN version_num TYPE varchar(:length) USING version_num::varchar(:length)"
+        )
+        connection.execute(alter_sql, {"length": min_length})
+
 def run_migrations_online() -> None:
     configuration = _configure_sqlalchemy_section()
 
@@ -101,6 +140,8 @@ def run_migrations_online() -> None:
             compare_type=True,
             compare_server_default=True,
         )
+
+        _ensure_version_column_length(connection)
 
         with context.begin_transaction():
             context.run_migrations()
