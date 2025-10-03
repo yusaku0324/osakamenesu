@@ -90,7 +90,8 @@ async def _get_session_from_cookie(request: Request, db: AsyncSession) -> Option
 
 
 def _log_magic_link(email: str, link: str) -> None:
-    logger.info("magic_link", extra={"email": email, "link": link})
+    message = f"MAGIC_LINK_DEBUG {link}"
+    logger.info(message, extra={"email": email})
 
 
 @router.post("/request-link", status_code=status.HTTP_202_ACCEPTED)

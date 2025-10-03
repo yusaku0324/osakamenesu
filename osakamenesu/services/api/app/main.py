@@ -12,11 +12,21 @@ from .routers.shops import router as shops_router
 from .routers.reservations import router as reservations_router
 from .routers.auth import router as auth_router
 from .routers.favorites import router as favorites_router
+from .routers.dashboard_notifications import router as dashboard_notifications_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .db import get_session
 from . import models
 from redis.asyncio import from_url
+
+
+app_logger = logging.getLogger("app")
+if not app_logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    app_logger.addHandler(handler)
+app_logger.setLevel(logging.INFO)
+app_logger.propagate = False
 
 
 @asynccontextmanager
@@ -104,3 +114,4 @@ app.include_router(shops_router)
 app.include_router(reservations_router)
 app.include_router(auth_router)
 app.include_router(favorites_router)
+app.include_router(dashboard_notifications_router)
