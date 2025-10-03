@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import MutableMapping
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool, text
+from sqlalchemy import engine_from_config, pool, text, String
 
 # Alembic config holds values from alembic.ini when the CLI runs this module.
 config = context.config
@@ -66,6 +66,7 @@ def _configure_context_offline(url: str) -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
         compare_server_default=True,
+        version_table_column_type=String(64),
     )
 
 
@@ -140,6 +141,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
+            version_table_column_type=String(64),
         )
 
         _ensure_version_column_length(connection)
