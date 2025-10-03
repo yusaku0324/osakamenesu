@@ -123,6 +123,7 @@ def _ensure_version_column_length(connection, *, min_length: int = 64) -> None:
             f"ALTER TABLE {table_ref} ALTER COLUMN version_num TYPE varchar(:length) USING version_num::varchar(:length)"
         )
         connection.execute(alter_sql, {"length": min_length})
+        connection.commit()
 
 def run_migrations_online() -> None:
     configuration = _configure_sqlalchemy_section()
