@@ -54,6 +54,8 @@ debug/
 videos/
 *.png
 *.json
+!osakamenesu/apps/web/package.json
+!osakamenesu/apps/web/package-lock.json
 *.yaml.bak
 *.pyc
 *.db
