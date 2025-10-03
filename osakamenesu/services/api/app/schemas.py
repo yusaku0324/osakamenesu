@@ -153,6 +153,12 @@ class ShopSummary(BaseModel):
     service_tags: List[str] = Field(default_factory=list)
     min_price: int = Field(..., ge=0)
     max_price: int = Field(..., ge=0)
+    nearest_station: Optional[str] = None
+    station_line: Optional[str] = None
+    station_exit: Optional[str] = None
+    station_walk_minutes: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     rating: Optional[float] = None
     review_count: Optional[int] = None
     lead_image_url: Optional[str] = None
@@ -206,6 +212,9 @@ class GeoLocation(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     nearest_station: Optional[str] = None
+    station_line: Optional[str] = None
+    station_exit: Optional[str] = None
+    station_walk_minutes: Optional[int] = None
 
 
 class MenuItem(BaseModel):

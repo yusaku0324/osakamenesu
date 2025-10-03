@@ -256,6 +256,12 @@ def _doc_to_shop_summary(doc: Dict[str, Any]) -> ShopSummary:
         service_tags=list(doc.get("body_tags", []) or []),
         min_price=doc.get("price_min", 0) or 0,
         max_price=doc.get("price_max", 0) or 0,
+        nearest_station=doc.get("nearest_station"),
+        station_line=doc.get("station_line"),
+        station_exit=doc.get("station_exit"),
+        station_walk_minutes=doc.get("station_walk_minutes"),
+        latitude=doc.get("latitude"),
+        longitude=doc.get("longitude"),
         rating=rating,
         review_count=review_count,
         lead_image_url=first_photo,
@@ -639,6 +645,7 @@ async def _filter_results_by_availability(
 async def search_shops(
     q: str | None = Query(default=None, description="Free text query"),
     area: str | None = Query(default=None, description="Area code filter"),
+    station: str | None = Query(default=None, description="Nearest station filter"),
     category: str | None = Query(default=None, description="Service category"),
     service_tags: str | None = Query(default=None, description="Comma separated service tags"),
     price_min: int | None = Query(default=None, ge=0),
@@ -661,6 +668,7 @@ async def search_shops(
     ranking_badges = [badge.strip() for badge in (ranking_badges_param or "").split(",") if badge.strip()]
     filter_expr = build_filter(
         area,
+        station,
         bust=None,
         service_type=category,
         body_tags=body_tags or None,
@@ -683,6 +691,8 @@ async def search_shops(
         page_size,
         facets=[
             "area",
+            "nearest_station",
+            "station_line",
             "service_type",
             "body_tags",
             "today",
@@ -702,6 +712,8 @@ async def search_shops(
     selected_facets: Dict[str, Set[str]] = {}
     if area:
         selected_facets["area"] = {area}
+    if station:
+        selected_facets["nearest_station"] = {station}
     if category:
         selected_facets["service_type"] = {category}
     if body_tags:
