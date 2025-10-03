@@ -87,44 +87,22 @@ def _configure_sqlalchemy_section() -> MutableMapping[str, str]:
 
 
 
+
 def _ensure_version_column_length(connection, *, min_length: int = 64) -> None:
     """Ensure alembic_version.version_num can store longer revision IDs."""
     version_table = config.get_main_option("version_table", "alembic_version")
     schema = config.get_main_option("version_table_schema")
+    table_ref = f"{schema}.{version_table}" if schema else version_table
 
-    if schema:
-        length_sql = text(
-            """
-            SELECT character_maximum_length
-            FROM information_schema.columns
-            WHERE table_name = :table
-              AND table_schema = :schema
-              AND column_name = 'version_num'
-            """
+    try:
+        sql = text(
+            "ALTER TABLE {table} ALTER COLUMN version_num TYPE varchar(:length) "
+            "USING version_num::varchar(:length)".format(table=table_ref)
         )
-        params = {"table": version_table, "schema": schema}
-    else:
-        length_sql = text(
-            """
-            SELECT character_maximum_length
-            FROM information_schema.columns
-            WHERE table_name = :table
-              AND column_name = 'version_num'
-            """
-        )
-        params = {"table": version_table}
-
-    result = connection.execute(length_sql, params).scalar()
-    if result is None:
-        return
-
-    if result < min_length:
-        table_ref = f"{schema}.{version_table}" if schema else version_table
-        alter_sql = text(
-            f"ALTER TABLE {table_ref} ALTER COLUMN version_num TYPE varchar(:length) USING version_num::varchar(:length)"
-        )
-        connection.execute(alter_sql, {"length": min_length})
+        connection.execute(sql, {"length": min_length})
         connection.commit()
+    except Exception:
+        connection.rollback()
 
 def run_migrations_online() -> None:
     configuration = _configure_sqlalchemy_section()
