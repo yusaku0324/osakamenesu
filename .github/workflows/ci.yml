@@ -132,10 +132,13 @@ jobs:
         run: gcloud auth configure-docker --quiet
 
       - name: Build and push API image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE="gcr.io/$GCP_PROJECT_ID/osakamenesu-api:${{ github.sha }}"
+          IMAGE="gcr.io/$GCP_PROJECT_ID/osakamenesu-api:${IMAGE_TAG}"
           echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
-          gcloud builds submit osakamenesu/services/api --project "$GCP_PROJECT_ID" --tag "$IMAGE"
+          docker build -t "$IMAGE" osakamenesu/services/api
+          docker push "$IMAGE"
 
       - name: Deploy osakamenesu-api to Cloud Run
         run: |
