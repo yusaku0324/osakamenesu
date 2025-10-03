@@ -1,6 +1,6 @@
 """add external ids for diaries and reviews
 
-Revision ID: 0012_add_external_ids_for_ingestion
+Revision ID: 0012_ext_ids_for_ingest
 Revises: 0011_extend_notif_settings
 Create Date: 2025-10-02 17:10:00
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0012_add_external_ids_for_ingestion"
+revision = "0012_ext_ids_for_ingest"
 down_revision = "0011_extend_notif_settings"
 branch_labels = None
 depends_on = None
