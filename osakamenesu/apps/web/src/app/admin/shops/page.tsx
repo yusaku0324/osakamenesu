@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useToast, ToastContainer } from '@/components/useToast'
 
 const EMPTY_PHONE = ''
@@ -113,13 +113,14 @@ export default function AdminShopsPage() {
   const [detail, setDetail] = useState<ShopDetail | null>(null)
   const [menus, setMenus] = useState<MenuItem[]>([])
   const [staff, setStaff] = useState<StaffItem[]>([])
-  const [serviceTags, setServiceTags] = useState<string>('')
+  const [serviceTags, setServiceTags] = useState<string[]>([])
+  const [tagDraft, setTagDraft] = useState<string>('')
   const [contact, setContact] = useState<ContactInfo>({})
   const [availability, setAvailability] = useState<AvailabilityDay[]>([])
   const [description, setDescription] = useState<string>('')
   const [catchCopy, setCatchCopy] = useState<string>('')
   const [address, setAddress] = useState<string>('')
-  const [photosText, setPhotosText] = useState<string>('')
+  const [photoUrls, setPhotoUrls] = useState<string[]>([''])
   const { toasts, push, remove } = useToast()
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false)
 
@@ -158,7 +159,7 @@ export default function AdminShopsPage() {
           ...s,
           specialties: (s.specialties || []),
         })))
-        setServiceTags((json.service_tags || []).join(', '))
+        setServiceTags(json.service_tags || [])
         setContact({
           phone: json.contact?.phone || EMPTY_PHONE,
           line_id: json.contact?.line_id || '',
@@ -176,7 +177,8 @@ export default function AdminShopsPage() {
         setDescription(json.description || '')
         setCatchCopy(json.catch_copy || '')
         setAddress(json.address || '')
-        setPhotosText((json.photos || []).join('\n'))
+        const photos: string[] = json.photos && json.photos.length > 0 ? json.photos : ['']
+        setPhotoUrls(photos)
       } catch (err) {
         console.error(err)
         push('error', '店舗詳細の取得に失敗しました')
@@ -189,13 +191,6 @@ export default function AdminShopsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId])
-
-  const serviceTagsArray = useMemo(() =>
-    serviceTags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(Boolean),
-  [serviceTags])
 
   function updateMenu(index: number, key: keyof MenuItem, value: any) {
     setMenus(prev => {
@@ -211,6 +206,37 @@ export default function AdminShopsPage() {
       next[index] = { ...next[index], [key]: value }
       return next
     })
+  }
+
+  function addServiceTag() {
+    const value = tagDraft.trim()
+    if (!value) return
+    if (serviceTags.includes(value)) {
+      setTagDraft('')
+      return
+    }
+    setServiceTags(prev => [...prev, value])
+    setTagDraft('')
+  }
+
+  function removeServiceTag(index: number) {
+    setServiceTags(prev => prev.filter((_, idx) => idx !== index))
+  }
+
+  function updatePhotoUrl(index: number, value: string) {
+    setPhotoUrls(prev => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+  }
+
+  function addPhotoField() {
+    setPhotoUrls(prev => [...prev, ''])
+  }
+
+  function removePhotoField(index: number) {
+    setPhotoUrls(prev => prev.filter((_, idx) => idx !== index))
   }
 
   function updateSlot(dayIndex: number, slotIndex: number, key: keyof AvailabilitySlot, value: any) {
@@ -260,13 +286,8 @@ export default function AdminShopsPage() {
   async function saveContent() {
     if (!selectedId) return
     try {
-      const photos = photosText
-        .split(/\r?\n/)
-        .map(url => url.trim())
-        .filter(Boolean)
-
       const payload = {
-        service_tags: serviceTagsArray,
+        service_tags: serviceTags,
         menus: menus.map(menu => ({
           ...menu,
           price: Number(menu.price) || 0,
@@ -286,7 +307,7 @@ export default function AdminShopsPage() {
         description: description || undefined,
         catch_copy: catchCopy || undefined,
         address: address || undefined,
-        photos,
+        photos: photoUrls.map(url => url.trim()).filter(Boolean),
       }
       const resp = await fetch(`/api/admin/shops/${selectedId}`, {
         method: 'PATCH',
@@ -300,7 +321,7 @@ export default function AdminShopsPage() {
       }
       const json = await resp.json()
       setDetail(json)
-      setPhotosText((json.photos || []).join('\n'))
+      setPhotoUrls(json.photos && json.photos.length > 0 ? json.photos : [''])
       push('success', '店舗情報を保存しました')
     } catch (err) {
       console.error(err)
@@ -410,27 +431,61 @@ export default function AdminShopsPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">掲載写真URL (改行区切り)</label>
-            <textarea
-              value={photosText}
-              onChange={e => setPhotosText(e.target.value)}
-              rows={4}
-              className="w-full border rounded px-3 py-2 text-sm font-mono"
-              placeholder="https://example.com/photo1.jpg\nhttps://example.com/photo2.jpg"
-              data-testid="shop-photos"
-            />
-            <p className="text-xs text-slate-500">公開ページに表示する画像のURLを改行区切りで入力してください。</p>
-          </div>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700">掲載写真URL</label>
+              <button onClick={addPhotoField} className="border px-3 py-1 rounded text-sm" type="button">行を追加</button>
+            </div>
+            <div className="space-y-2">
+              {photoUrls.map((url, idx) => (
+                <div key={`photo-${idx}`} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    value={url}
+                    onChange={e => updatePhotoUrl(idx, e.target.value)}
+                    className="flex-1 border rounded px-3 py-2 text-sm font-mono"
+                    placeholder="https://example.com/photo.jpg"
+                    data-testid="shop-photo-input"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => removePhotoField(idx)} className="text-xs text-red-600" type="button" disabled={photoUrls.length <= 1}>削除</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">公開ページに表示する画像のURLを1行ずつ入力してください。</p>
+          </section>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">サービスタグ (カンマ区切り)</label>
-            <input
-              value={serviceTags}
-              onChange={e => setServiceTags(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              data-testid="shop-service-tags"
-            />
+            <label className="text-sm font-medium text-slate-700">サービスタグ</label>
+            <div className="flex flex-wrap gap-2" data-testid="shop-service-tags">
+              {serviceTags.length === 0 ? (
+                <span className="text-xs text-slate-400 border border-dashed rounded px-2 py-1">タグ未設定</span>
+              ) : (
+                serviceTags.map((tag, idx) => (
+                  <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full">
+                    {tag}
+                    <button onClick={() => removeServiceTag(idx)} className="hover:text-blue-900" type="button" aria-label={`${tag} を削除`}>
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={tagDraft}
+                onChange={e => setTagDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addServiceTag()
+                  }
+                }}
+                className="flex-1 border rounded px-3 py-2 text-sm"
+                placeholder="例: 指圧, アロマ"
+              />
+              <button onClick={addServiceTag} className="border px-3 py-1 rounded text-sm" type="button">追加</button>
+            </div>
           </div>
 
           <section className="space-y-3">

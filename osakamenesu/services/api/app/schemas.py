@@ -453,6 +453,10 @@ class MenuInput(BaseModel):
     is_reservable_online: Optional[bool] = True
 
 
+class BulkMenuInput(MenuInput):
+    external_id: Optional[str] = None
+
+
 class StaffInput(BaseModel):
     id: Optional[UUID] = None
     name: str
@@ -478,6 +482,69 @@ class ShopContentUpdate(BaseModel):
     catch_copy: Optional[str] = None
     address: Optional[str] = None
     photos: Optional[List[str]] = None
+
+
+ReviewStatusLiteral = Literal['pending', 'published', 'rejected']
+DiaryStatusLiteral = Literal['mod', 'published', 'hidden']
+
+
+class BulkReviewInput(BaseModel):
+    external_id: Optional[str] = None
+    score: conint(ge=1, le=5)  # type: ignore[valid-type]
+    title: Optional[str] = None
+    body: str
+    author_alias: Optional[str] = None
+    visited_at: Optional[date] = None
+    status: ReviewStatusLiteral = 'published'
+
+
+class BulkDiaryInput(BaseModel):
+    external_id: Optional[str] = None
+    title: str
+    body: str
+    photos: List[str] = Field(default_factory=list)
+    hashtags: List[str] = Field(default_factory=list)
+    status: DiaryStatusLiteral = 'published'
+    created_at: Optional[datetime] = None
+
+
+class BulkAvailabilityInput(BaseModel):
+    date: date
+    slots: Optional[List[AvailabilitySlotIn]] = None
+
+
+class BulkShopContentItem(BaseModel):
+    shop_id: UUID
+    service_tags: Optional[List[str]] = None
+    photos: Optional[List[str]] = None
+    menus: Optional[List[BulkMenuInput]] = None
+    reviews: Optional[List[BulkReviewInput]] = None
+    diaries: Optional[List[BulkDiaryInput]] = None
+    availability: Optional[List[BulkAvailabilityInput]] = None
+    contact: Optional[ShopContactUpdate] = None
+    description: Optional[str] = None
+    catch_copy: Optional[str] = None
+    address: Optional[str] = None
+
+
+class BulkShopContentRequest(BaseModel):
+    shops: List[BulkShopContentItem]
+
+
+class BulkShopIngestResult(BaseModel):
+    shop_id: UUID
+    photos_updated: bool = False
+    menus_updated: bool = False
+    reviews_created: int = 0
+    reviews_updated: int = 0
+    diaries_created: int = 0
+    diaries_updated: int = 0
+    availability_upserts: int = 0
+
+
+class BulkShopContentResponse(BaseModel):
+    processed: List[BulkShopIngestResult] = Field(default_factory=list)
+    errors: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class ShopAdminSummary(BaseModel):
@@ -508,3 +575,44 @@ class ShopAdminDetail(BaseModel):
     menus: List[MenuItem] = Field(default_factory=list)
     staff: List[StaffSummary] = Field(default_factory=list)
     availability: List[AvailabilityDay] = Field(default_factory=list)
+
+DashboardNotificationStatus = Literal['pending', 'confirmed', 'declined', 'cancelled', 'expired']
+
+
+class DashboardNotificationChannelEmail(BaseModel):
+    enabled: bool = False
+    recipients: List[str] = Field(default_factory=list)
+
+
+class DashboardNotificationChannelLine(BaseModel):
+    enabled: bool = False
+    token: Optional[str] = None
+
+
+class DashboardNotificationChannelSlack(BaseModel):
+    enabled: bool = False
+    webhook_url: Optional[str] = None
+
+
+class DashboardNotificationChannels(BaseModel):
+    email: DashboardNotificationChannelEmail
+    line: DashboardNotificationChannelLine
+    slack: DashboardNotificationChannelSlack
+
+
+class DashboardNotificationSettingsResponse(BaseModel):
+    profile_id: UUID
+    updated_at: datetime
+    trigger_status: List[DashboardNotificationStatus] = Field(default_factory=list)
+    channels: DashboardNotificationChannels
+
+
+class DashboardNotificationSettingsUpdatePayload(BaseModel):
+    updated_at: datetime
+    trigger_status: List[DashboardNotificationStatus]
+    channels: DashboardNotificationChannels
+
+
+class DashboardNotificationSettingsTestPayload(BaseModel):
+    trigger_status: List[DashboardNotificationStatus]
+    channels: DashboardNotificationChannels

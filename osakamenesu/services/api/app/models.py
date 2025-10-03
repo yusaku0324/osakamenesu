@@ -5,7 +5,7 @@ from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, 
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 import uuid
 from datetime import datetime, date, UTC
-from typing import Any
+from typing import Any, Optional
 
 
 Base = declarative_base()
@@ -51,6 +51,11 @@ class Profile(Base):
     diaries: Mapped[list["Diary"]] = relationship(back_populates='profile', cascade='all,delete-orphan')
     reviews: Mapped[list["Review"]] = relationship(back_populates='profile', cascade='all, delete-orphan')
     favorites: Mapped[list[UserFavorite]] = relationship(back_populates='profile', cascade='all, delete-orphan')
+    notification_setting: Mapped["DashboardNotificationSetting"] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class User(Base):
@@ -69,6 +74,9 @@ class User(Base):
     sessions: Mapped[list[UserSession]] = relationship(back_populates='user', cascade='all, delete-orphan')
     favorites: Mapped[list[UserFavorite]] = relationship(back_populates='user', cascade='all, delete-orphan')
     reservations: Mapped[list[Reservation]] = relationship(back_populates='user')
+    notification_settings_updated: Mapped[list["DashboardNotificationSetting"]] = relationship(
+        back_populates="updated_by_user"
+    )
 
 
 class UserAuthToken(Base):
@@ -116,8 +124,13 @@ class UserFavorite(Base):
 
 class Diary(Base):
     __tablename__ = 'diaries'
+    __table_args__ = (
+        UniqueConstraint('profile_id', 'external_id', name='uq_diaries_profile_external'),
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), index=True)
+    external_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(160))
     text: Mapped[str] = mapped_column(Text)
     photos: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
@@ -180,10 +193,14 @@ class Report(Base):
 
 class Review(Base):
     __tablename__ = 'reviews'
+    __table_args__ = (
+        UniqueConstraint('profile_id', 'external_id', name='uq_reviews_profile_external'),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), index=True)
     status: Mapped[str] = mapped_column(ReviewStatus, default='pending', nullable=False, index=True)
+    external_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str | None] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(Text, nullable=False)
@@ -193,6 +210,23 @@ class Review(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
 
     profile: Mapped["Profile"] = relationship(back_populates='reviews')
+
+
+class DashboardNotificationSetting(Base):
+    __tablename__ = 'dashboard_notification_settings'
+
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), primary_key=True
+    )
+    trigger_status: Mapped[list[str]] = mapped_column(ARRAY(String(32)), nullable=False, default=list)
+    channels: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
+
+    profile: Mapped[Profile] = relationship(back_populates='notification_setting')
+    updated_by_user: Mapped[Optional[User]] = relationship(back_populates='notification_settings_updated')
 
 
 class AdminLog(Base):

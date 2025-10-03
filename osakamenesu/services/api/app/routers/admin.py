@@ -18,6 +18,7 @@ from ..schemas import (
     ReservationAdminUpdate,
     AvailabilityCreate,
     AvailabilityUpsert,
+    AvailabilitySlotIn,
     ShopContentUpdate,
     ShopAdminSummary,
     ShopAdminList,
@@ -27,10 +28,18 @@ from ..schemas import (
     ReviewListResponse,
     ReviewItem,
     ReviewModerationRequest,
+    BulkShopContentRequest,
+    BulkShopContentResponse,
+    BulkShopIngestResult,
+    BulkMenuInput,
+    BulkReviewInput,
+    BulkDiaryInput,
+    BulkAvailabilityInput,
 )
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Optional, Any, List
+import uuid
 from ..deps import require_admin, audit_admin
 from .shops import _fetch_availability, _normalize_menus, _normalize_staff, serialize_review
 
@@ -575,6 +584,210 @@ async def admin_update_shop_content(
         detail.model_dump() if hasattr(detail, "model_dump") else jsonable_encoder(detail),
     )
     return detail
+
+
+def _menu_to_dict(menu: BulkMenuInput, shop_id: UUID) -> dict[str, Any]:
+    menu_uuid = menu.id or (
+        uuid.uuid5(uuid.NAMESPACE_URL, f"{shop_id}:menu:{menu.external_id}")
+        if menu.external_id
+        else uuid.uuid5(uuid.NAMESPACE_URL, f"{shop_id}:menu:{menu.name}")
+    )
+    return {
+        "id": str(menu_uuid),
+        "name": menu.name,
+        "price": menu.price,
+        "duration_minutes": menu.duration_minutes,
+        "description": menu.description,
+        "tags": menu.tags,
+        "is_reservable_online": menu.is_reservable_online,
+    }
+
+
+def _slots_to_json(slots: List[AvailabilitySlotIn] | None) -> dict | None:
+    if not slots:
+        return None
+    return {
+        "slots": [
+            {
+                "start_at": slot.start_at.isoformat(),
+                "end_at": slot.end_at.isoformat(),
+                "status": slot.status,
+                "staff_id": str(slot.staff_id) if slot.staff_id else None,
+                "menu_id": str(slot.menu_id) if slot.menu_id else None,
+            }
+            for slot in slots
+        ]
+    }
+
+
+@router.post(
+    "/api/admin/shops/content:bulk",
+    summary="Bulk ingest shop content",
+    response_model=BulkShopContentResponse,
+)
+async def admin_bulk_ingest_shop_content(
+    request: Request,
+    payload: BulkShopContentRequest,
+    db: AsyncSession = Depends(get_session),
+) -> BulkShopContentResponse:
+    processed: List[BulkShopIngestResult] = []
+    errors: List[dict[str, Any]] = []
+
+    for entry in payload.shops:
+        profile = await db.get(models.Profile, entry.shop_id)
+        if not profile:
+            errors.append({"shop_id": str(entry.shop_id), "error": "shop_not_found"})
+            continue
+
+        summary = BulkShopIngestResult(shop_id=entry.shop_id)
+        before_detail = await admin_get_shop(entry.shop_id, db)
+
+        contact_json = dict(profile.contact_json or {})
+
+        if entry.contact is not None:
+            contact_json["phone"] = entry.contact.phone
+            if entry.contact.phone:
+                contact_json["tel"] = entry.contact.phone
+            contact_json["line_id"] = entry.contact.line_id
+            contact_json["line"] = entry.contact.line_id
+            contact_json["website_url"] = entry.contact.website_url
+            contact_json["web"] = entry.contact.website_url
+            contact_json["reservation_form_url"] = entry.contact.reservation_form_url
+            contact_json["sns"] = entry.contact.sns or []
+
+        if entry.description is not None:
+            contact_json["description"] = entry.description
+        if entry.catch_copy is not None:
+            contact_json["catch_copy"] = entry.catch_copy
+        if entry.address is not None:
+            contact_json["address"] = entry.address
+
+        if entry.service_tags is not None:
+            contact_json["service_tags"] = entry.service_tags
+            profile.body_tags = entry.service_tags
+
+        if entry.photos is not None:
+            profile.photos = entry.photos
+            summary.photos_updated = True
+
+        if entry.menus is not None:
+            contact_json["menus"] = [_menu_to_dict(menu, profile.id) for menu in entry.menus]
+            summary.menus_updated = True
+
+        profile.contact_json = contact_json
+
+        if entry.reviews:
+            for review in entry.reviews:
+                existing_review = None
+                if review.external_id:
+                    stmt = select(models.Review).where(
+                        models.Review.profile_id == profile.id,
+                        models.Review.external_id == review.external_id,
+                    )
+                    existing_review = (await db.execute(stmt)).scalar_one_or_none()
+
+                if existing_review:
+                    target_review = existing_review
+                    summary.reviews_updated += 1
+                else:
+                    target_review = models.Review(profile_id=profile.id)
+                    summary.reviews_created += 1
+                    db.add(target_review)
+
+                target_review.external_id = review.external_id
+                target_review.score = review.score
+                target_review.title = review.title
+                target_review.body = review.body
+                target_review.author_alias = review.author_alias
+                target_review.visited_at = review.visited_at
+                target_review.status = review.status
+
+        if entry.diaries:
+            for diary in entry.diaries:
+                existing_diary = None
+                if diary.external_id:
+                    stmt = select(models.Diary).where(
+                        models.Diary.profile_id == profile.id,
+                        models.Diary.external_id == diary.external_id,
+                    )
+                    existing_diary = (await db.execute(stmt)).scalar_one_or_none()
+
+                if existing_diary:
+                    target_diary = existing_diary
+                    summary.diaries_updated += 1
+                else:
+                    target_diary = models.Diary(profile_id=profile.id)
+                    summary.diaries_created += 1
+                    db.add(target_diary)
+
+                target_diary.external_id = diary.external_id
+                target_diary.title = diary.title
+                target_diary.text = diary.body
+                target_diary.photos = diary.photos or []
+                target_diary.hashtags = diary.hashtags or []
+                target_diary.status = diary.status
+                if diary.created_at:
+                    created_at = diary.created_at
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    target_diary.created_at = created_at
+
+        if entry.availability:
+            for availability in entry.availability:
+                slots_json = _slots_to_json(availability.slots)
+                stmt = select(models.Availability).where(
+                    models.Availability.profile_id == profile.id,
+                    models.Availability.date == availability.date,
+                )
+                existing_availability = (await db.execute(stmt)).scalar_one_or_none()
+                if existing_availability:
+                    existing_availability.slots_json = slots_json
+                    existing_availability.is_today = availability.date == datetime.now(JST).date()
+                else:
+                    db.add(
+                        models.Availability(
+                            profile_id=profile.id,
+                            date=availability.date,
+                            slots_json=slots_json,
+                            is_today=availability.date == datetime.now(JST).date(),
+                        )
+                    )
+                summary.availability_upserts += 1
+
+        try:
+            await db.commit()
+        except Exception as exc:
+            await db.rollback()
+            errors.append({"shop_id": str(entry.shop_id), "error": str(exc)})
+            continue
+
+        await db.refresh(profile)
+
+        today = datetime.now(JST).date()
+        res_today = await db.execute(
+            select(func.count())
+            .select_from(models.Availability)
+            .where(models.Availability.profile_id == profile.id, models.Availability.date == today)
+        )
+        has_today = (res_today.scalar_one() or 0) > 0
+        res_out = await db.execute(select(models.Outlink).where(models.Outlink.profile_id == profile.id))
+        outlinks = list(res_out.scalars().all())
+        index_profile(_build_doc(profile, has_today, outlinks))
+
+        after_detail = await admin_get_shop(profile.id, db)
+        await _record_change(
+            request,
+            db,
+            "shop",
+            profile.id,
+            "bulk_ingest",
+            before_detail.model_dump() if hasattr(before_detail, "model_dump") else jsonable_encoder(before_detail),
+            after_detail.model_dump() if hasattr(after_detail, "model_dump") else jsonable_encoder(after_detail),
+        )
+
+        processed.append(summary)
+
+    return BulkShopContentResponse(processed=processed, errors=errors)
 
 
 @router.put("/api/admin/shops/{shop_id}/availability", summary="Upsert availability", response_model=dict)
