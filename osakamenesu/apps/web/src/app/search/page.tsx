@@ -22,6 +22,7 @@ type Promotion = {
 type Params = {
   q?: string
   area?: string
+  station?: string
   service?: string
   body?: string
   today?: string
@@ -58,6 +59,7 @@ async function fetchProfiles(params: Params): Promise<SearchResponse> {
   const query = toQueryString({
     q: params.q,
     area: params.area,
+    station: params.station,
     category: params.service,
     service_tags: params.body,
     open_now: params.today,

@@ -55,6 +55,7 @@ export default function SearchFilters({ init, facets }: Props) {
 
   const [q, setQ] = useState<string>(() => extractParam('q'))
   const [area, setArea] = useState<string>(() => extractParam('area'))
+  const [station, setStation] = useState<string>(() => extractParam('station'))
   const [service, setService] = useState<string>(() => extractParam('service'))
   const [body, setBody] = useState<string>(() => extractParam('body'))
   const [today, setToday] = useState<boolean>(() => extractParam('today') === 'true')
@@ -69,6 +70,7 @@ export default function SearchFilters({ init, facets }: Props) {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
     if (area) params.set('area', area)
+    if (station) params.set('station', station)
     if (service) params.set('service', service)
     if (body) params.set('body', body)
     if (today) params.set('today', 'true')
@@ -100,6 +102,15 @@ export default function SearchFilters({ init, facets }: Props) {
     return items
   }, [area, facets?.area])
 
+  const stationOptions = useMemo(() => {
+    const facetList = facets?.nearest_station || []
+    const items: Array<[string, string]> = facetList.length
+      ? facetList.map(f => [f.value, f.label || f.value])
+      : []
+    if (station && !items.some(([v]) => v === station)) items.unshift([station, station])
+    return items
+  }, [station, facets?.nearest_station])
+
   const serviceOptions = useMemo(() => {
     const facetList = facets?.service_type || []
     if (!facetList.length) return [
@@ -124,12 +135,20 @@ export default function SearchFilters({ init, facets }: Props) {
     <section className="sticky top-14 z-20 space-y-3 rounded-section border border-neutral-borderLight bg-neutral-surface/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-neutral-surface/80">
       <div className="grid gap-3 md:grid-cols-5">
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="キーワードを入力" className={`${fieldClass} md:col-span-2`} />
-        <select value={area} onChange={e=>setArea(e.target.value)} className={fieldClass}>
-          <option value="">エリア</option>
-          {areaOptions.map(([value,label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-2">
+          <select value={area} onChange={e=>setArea(e.target.value)} className={fieldClass}>
+            <option value="">エリア</option>
+            {areaOptions.map(([value,label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={station} onChange={e=>setStation(e.target.value)} className={fieldClass}>
+            <option value="">駅を選択</option>
+            {stationOptions.map(([value,label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
         <select value={service} onChange={e=>setService(e.target.value)} className={fieldClass}>
           <option value="">サービス形態</option>
           {serviceOptions.map(([value, label]) => (

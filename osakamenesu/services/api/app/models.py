@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
-from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, Boolean, UniqueConstraint
+from sqlalchemy import String, Text, Integer, Enum, DateTime, ForeignKey, Date, Boolean, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 import uuid
 from datetime import datetime, date, UTC
@@ -35,6 +35,12 @@ class Profile(Base):
     price_max: Mapped[int] = mapped_column(Integer, index=True)
     bust_tag: Mapped[str] = mapped_column(String(16), index=True)
     service_type: Mapped[str] = mapped_column(ServiceType, default='store', index=True)
+    nearest_station: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    station_line: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    station_exit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    station_walk_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Optional stats
     height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)

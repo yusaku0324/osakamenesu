@@ -59,13 +59,13 @@ async def create_profile(payload: ProfileCreate, db: AsyncSession = Depends(get_
 
 
 @router.get("/api/profiles/search")
-async def search_profiles(q: str | None = None, area: str | None = None, bust: str | None = None,
+async def search_profiles(q: str | None = None, area: str | None = None, station: str | None = None, bust: str | None = None,
                           service: str | None = None, body: str | None = None, page: int = 1, page_size: int = 12,
                           today: bool | None = None, price_min: int | None = None,
                           price_max: int | None = None, sort: str | None = None,
                           status: str | None = "published"):
     body_tags = [t for t in (body or "").split(",") if t]
-    f = build_filter(area, bust, service, body_tags or None, today, price_min, price_max, status)
+    f = build_filter(area, station, bust, service, body_tags or None, today, price_min, price_max, status)
     # normalize sort (example: "price_min:asc") => "price_min:asc"
     sort_expr: list[str] | None = None
     if sort:

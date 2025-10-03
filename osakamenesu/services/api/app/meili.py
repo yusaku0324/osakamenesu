@@ -51,6 +51,9 @@ def ensure_indexes() -> None:
             "has_promotions",
             "has_discounts",
             "has_diaries",
+            "nearest_station",
+            "station_line",
+            "station_walk_minutes",
         ],
         "sortableAttributes": [
             "price_min",
@@ -65,7 +68,7 @@ def ensure_indexes() -> None:
             "review_score",
             "review_count",
         ],
-        "searchableAttributes": ["name", "store_name", "area", "body_tags", "ranking_badges"],
+        "searchableAttributes": ["name", "store_name", "area", "nearest_station", "station_line", "body_tags", "ranking_badges"],
         # Keep default ranking rules; use `sort` at query time for ordering
         "rankingRules": [
             "words", "typo", "proximity", "attribute", "sort", "exactness"
@@ -103,6 +106,7 @@ def purge_all():
 
 def build_filter(
     area: str | None,
+    station: str | None,
     bust: str | None,
     service_type: str | None,
     body_tags: list[str] | None,
@@ -120,6 +124,8 @@ def build_filter(
     parts: list[str] = []
     if area:
         parts.append(f"area = '{area}'")
+    if station:
+        parts.append(f"nearest_station = '{station}'")
     if bust:
         parts.append(f"bust_tag = '{bust}'")
     if service_type:
