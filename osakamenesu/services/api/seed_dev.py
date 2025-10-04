@@ -7,10 +7,20 @@ import sys
 import time
 from datetime import date
 from typing import Optional
-from urllib import request, parse
+from urllib import request, parse, error
 
 
 def make_client(api_base: str, admin_key: str, authorization: Optional[str]):
+    def _execute(req: request.Request) -> dict:
+        try:
+            with request.urlopen(req) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise RuntimeError(
+                f"HTTPError {exc.code} for {req.full_url}: {detail or exc.reason}"
+            ) from exc
+
     def post_json(path: str, payload: dict) -> dict:
         url = f"{api_base}{path}"
         data = json.dumps(payload).encode("utf-8")
@@ -21,8 +31,7 @@ def make_client(api_base: str, admin_key: str, authorization: Optional[str]):
         if authorization:
             headers["Authorization"] = authorization
         req = request.Request(url, data=data, headers=headers, method="POST")
-        with request.urlopen(req) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        return _execute(req)
 
     def post_query(path: str, params: dict) -> dict:
         url = f"{api_base}{path}?{parse.urlencode(params)}"
@@ -32,8 +41,7 @@ def make_client(api_base: str, admin_key: str, authorization: Optional[str]):
         if authorization:
             headers["Authorization"] = authorization
         req = request.Request(url, headers=headers, method="POST")
-        with request.urlopen(req) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        return _execute(req)
 
     return post_json, post_query
 
