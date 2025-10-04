@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { type FormEventHandler, useEffect, useMemo, useState, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type FacetValue = {
@@ -33,6 +33,7 @@ export default function SearchFilters({ init, facets }: Props) {
   const pathname = usePathname()
   const sp = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const spKey = sp.toString()
 
   const extractParam = (key: string): string => {
     const initValue = init?.[key]
@@ -81,9 +82,52 @@ export default function SearchFilters({ init, facets }: Props) {
     if (diariesOnly) params.set('diaries_only', 'true')
     if (sort && sort !== 'recommended') params.set('sort', sort)
     params.set('page', '1')
-    startTransition(() => router.replace(`${pathname}?${params.toString()}`))
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`)
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    })
     try { localStorage.setItem('search.last', params.toString()) } catch {}
   }
+
+  function reset() {
+    setQ('')
+    setArea('')
+    setStation('')
+    setService('')
+    setBody('')
+    setToday(false)
+    setPriceBands([])
+    setRankingBadges([])
+    setPromotionsOnly(false)
+    setDiscountsOnly(false)
+    setDiariesOnly(false)
+    setSort('recommended')
+    startTransition(() => {
+      router.replace(pathname)
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    })
+    try { localStorage.removeItem('search.last') } catch {}
+  }
+
+  useEffect(() => {
+    setQ(extractParam('q'))
+    setArea(extractParam('area'))
+    setStation(extractParam('station'))
+    setService(extractParam('service'))
+    setBody(extractParam('body'))
+    setToday(extractParam('today') === 'true')
+    setPriceBands(extractList('price_band'))
+    setRankingBadges(extractList('ranking_badges'))
+    setPromotionsOnly(extractParam('promotions_only') === 'true')
+    setDiscountsOnly(extractParam('discounts_only') === 'true')
+    setDiariesOnly(extractParam('diaries_only') === 'true')
+    setSort(extractParam('sort') || 'recommended')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spKey])
 
   useEffect(() => {
     if (!sp.toString() && typeof window !== 'undefined') {
@@ -131,11 +175,42 @@ export default function SearchFilters({ init, facets }: Props) {
   const fieldClass = 'w-full rounded-lg border border-neutral-borderLight bg-neutral-surface px-3 py-2 text-sm shadow-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-secondary/30'
   const chipClass = (active: boolean) => `inline-flex items-center gap-1 rounded-badge border px-3 py-1 text-sm transition ${active ? 'border-brand-primary bg-brand-primary text-white shadow-sm' : 'border-neutral-borderLight bg-neutral-surfaceAlt text-neutral-text'}`
 
+  const onSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+    event.preventDefault()
+    push()
+  }
+
   return (
-    <section className="sticky top-14 z-20 space-y-3 rounded-section border border-neutral-borderLight bg-neutral-surface/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-neutral-surface/80">
-      <div className="grid gap-3 md:grid-cols-5">
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="キーワードを入力" className={`${fieldClass} md:col-span-2`} />
-        <div className="flex flex-col gap-2">
+    <form
+      onSubmit={onSubmit}
+      role="search"
+      aria-label="店舗検索条件"
+      className="sticky top-16 z-20 space-y-4 rounded-section border border-neutral-borderLight/70 bg-white/85 p-5 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
+      aria-busy={isPending}
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-textMuted">検索条件</span>
+          <p className="text-xs text-neutral-textMuted/80">気になる条件を組み合わせて、一覧をリアルタイムに更新します。</p>
+        </div>
+        <button
+          type="button"
+          onClick={reset}
+          className="inline-flex items-center gap-1 rounded-badge border border-neutral-borderLight/80 px-3 py-1 text-xs font-semibold text-neutral-text transition hover:border-brand-primary hover:text-brand-primary"
+          disabled={isPending}
+        >
+          条件をリセット
+        </button>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4 xl:grid-cols-5">
+        <input
+          value={q}
+          onChange={e=>setQ(e.target.value)}
+          placeholder="キーワードを入力"
+          className={`${fieldClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
+        />
+        <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-2 xl:col-span-1">
           <select value={area} onChange={e=>setArea(e.target.value)} className={fieldClass}>
             <option value="">エリア</option>
             {areaOptions.map(([value,label]) => (
@@ -149,25 +224,36 @@ export default function SearchFilters({ init, facets }: Props) {
             ))}
           </select>
         </div>
-        <select value={service} onChange={e=>setService(e.target.value)} className={fieldClass}>
+        <select value={service} onChange={e=>setService(e.target.value)} className={`${fieldClass} sm:col-span-2 lg:col-span-1`}>
           <option value="">サービス形態</option>
           {serviceOptions.map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <input value={body} onChange={e=>setBody(e.target.value)} placeholder="こだわりキーワード (例: アロマ)" className={fieldClass} />
-        <label className="flex items-center gap-2 rounded-lg border border-transparent bg-neutral-surfaceAlt px-3 py-2 text-sm text-neutral-text">
+        <input
+          value={body}
+          onChange={e=>setBody(e.target.value)}
+          placeholder="こだわりキーワード (例: アロマ)"
+          className={`${fieldClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
+        />
+        <label className="flex items-center gap-2 rounded-lg border border-neutral-borderLight/70 bg-neutral-surfaceAlt px-3 py-2 text-sm text-neutral-text sm:col-span-2 lg:col-span-1">
           <input type="checkbox" checked={today} onChange={e=>setToday(e.target.checked)} className="h-4 w-4" />
           本日出勤のみ
         </label>
-        <select value={sort} onChange={e=>setSort(e.target.value)} className={fieldClass}>
+        <select value={sort} onChange={e=>setSort(e.target.value)} className={`${fieldClass} sm:col-span-2 lg:col-span-1`}>
           <option value="recommended">おすすめ順</option>
           <option value="price_asc">料金が安い順</option>
           <option value="price_desc">料金が高い順</option>
           <option value="rating">クチコミ評価順</option>
           <option value="new">更新が新しい順</option>
         </select>
-        <button onClick={push} className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-primaryDark disabled:cursor-not-allowed disabled:opacity-50" disabled={isPending}>検索する</button>
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-lg bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-primaryDark disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2 lg:col-span-1 lg:w-full xl:w-auto"
+          disabled={isPending}
+        >
+          {isPending ? '更新中…' : '検索する'}
+        </button>
       </div>
 
       {priceFacet.length ? (
@@ -239,6 +325,6 @@ export default function SearchFilters({ init, facets }: Props) {
           写メ日記掲載あり{diariesFacetCount ? ` (${diariesFacetCount})` : ''}
         </label>
       </div>
-    </section>
+    </form>
   )
 }
