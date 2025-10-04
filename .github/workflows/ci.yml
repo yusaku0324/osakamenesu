@@ -146,3 +146,24 @@ jobs:
             --region "$CLOUD_RUN_REGION" \
             --image "$IMAGE"
 
+      - name: Seed staging data with sample profiles
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          set -euo pipefail
+          SERVICE_URL=$(gcloud run services describe "$CLOUD_RUN_API_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --format='value(status.url)')
+          if [ -z "$SERVICE_URL" ]; then
+            echo "Failed to resolve Cloud Run service URL" >&2
+            exit 1
+          fi
+          echo "::notice::Seeding staging data via ${SERVICE_URL}"
+          ID_TOKEN=$(gcloud auth print-identity-token --audiences="$SERVICE_URL")
+          echo "::add-mask::${ID_TOKEN}"
+          python3 osakamenesu/services/api/seed_dev.py \
+            --api-base "$SERVICE_URL" \
+            --admin-key "$ADMIN_API_KEY" \
+            --id-token "$ID_TOKEN" \
+            --count 10 \
+            --today-rate 0.6
