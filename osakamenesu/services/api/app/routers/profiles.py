@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,6 +16,9 @@ from ..utils.profiles import build_profile_doc, infer_height_age, infer_store_na
 from ..deps import require_admin, audit_admin
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -56,7 +61,12 @@ async def create_profile(
         status=payload.status,
     )
     db.add(p)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("failed to create profile")
+        raise HTTPException(status_code=500, detail=f"create_profile_failed: {exc}")
     await db.refresh(p)
     if not skip_index:
         # index to Meili as published-only
