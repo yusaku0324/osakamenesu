@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..db import get_session
@@ -31,7 +31,13 @@ def _to_doc(p: models.Profile, today: bool = False, tag_score: float = 0.0, ctr7
 
 
 @router.post("/api/admin/profiles", summary="Create profile (seed)")
-async def create_profile(payload: ProfileCreate, db: AsyncSession = Depends(get_session), _=Depends(require_admin), __=Depends(audit_admin)):
+async def create_profile(
+    payload: ProfileCreate,
+    skip_index: bool = Query(False, description="Skip immediate Meili indexing"),
+    db: AsyncSession = Depends(get_session),
+    _=Depends(require_admin),
+    __=Depends(audit_admin),
+):
     p = models.Profile(
         name=payload.name,
         area=payload.area,
@@ -52,9 +58,10 @@ async def create_profile(payload: ProfileCreate, db: AsyncSession = Depends(get_
     db.add(p)
     await db.commit()
     await db.refresh(p)
-    # index to Meili as published-only
-    doc = _to_doc(p, today=False)
-    index_profile(doc)
+    if not skip_index:
+        # index to Meili as published-only
+        doc = _to_doc(p, today=False)
+        index_profile(doc)
     return {"id": str(p.id)}
 
 

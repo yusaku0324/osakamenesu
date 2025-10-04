@@ -197,7 +197,7 @@ def main(argv: list[str]) -> int:
             "ranking_weight": 100 - i,
             "status": "published",
         }
-        res = post_json("/api/admin/profiles", body)
+        res = post_json("/api/admin/profiles?skip_index=1", body)
         pid = res["id"]
         created_ids.append(pid)
 
