@@ -7,11 +7,13 @@ type SectionProps = {
   actions?: ReactNode
   children: ReactNode
   className?: string
+  id?: string
+  ariaLive?: 'off' | 'polite' | 'assertive'
 }
 
-export function Section({ title, subtitle, actions, className, children }: SectionProps) {
+export function Section({ title, subtitle, actions, className, children, id, ariaLive = 'off' }: SectionProps) {
   return (
-    <section className={clsx('rounded-section bg-neutral-surface p-6 shadow-card', className)}>
+    <section id={id} aria-live={ariaLive} className={clsx('rounded-section bg-neutral-surface p-6 shadow-card', className)}>
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-neutral-text">{title}</h2>
