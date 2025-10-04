@@ -6,10 +6,11 @@ import random
 import sys
 import time
 from datetime import date
+from typing import Optional
 from urllib import request, parse
 
 
-def make_client(api_base: str, admin_key: str):
+def make_client(api_base: str, admin_key: str, authorization: Optional[str]):
     def post_json(path: str, payload: dict) -> dict:
         url = f"{api_base}{path}"
         data = json.dumps(payload).encode("utf-8")
@@ -17,6 +18,8 @@ def make_client(api_base: str, admin_key: str):
             "Content-Type": "application/json",
             "X-Admin-Key": admin_key,
         }
+        if authorization:
+            headers["Authorization"] = authorization
         req = request.Request(url, data=data, headers=headers, method="POST")
         with request.urlopen(req) as resp:
             return json.loads(resp.read().decode("utf-8"))
@@ -26,6 +29,8 @@ def make_client(api_base: str, admin_key: str):
         headers = {
             "X-Admin-Key": admin_key,
         }
+        if authorization:
+            headers["Authorization"] = authorization
         req = request.Request(url, headers=headers, method="POST")
         with request.urlopen(req) as resp:
             return json.loads(resp.read().decode("utf-8"))
@@ -49,9 +54,23 @@ def main(argv: list[str]) -> int:
         or os.environ.get("ADMIN_API_KEY", "dev_admin_key"),
         help="X-Admin-Key header",
     )
+    parser.add_argument(
+        "--authorization",
+        default=os.environ.get("AUTHORIZATION"),
+        help="Full Authorization header value (overrides --id-token if provided)",
+    )
+    parser.add_argument(
+        "--id-token",
+        default=os.environ.get("CLOUD_RUN_ID_TOKEN"),
+        help="Identity token used as Bearer token for Cloud Run IAM auth",
+    )
     args = parser.parse_args(argv)
 
-    post_json, post_query = make_client(args.api_base, args.admin_key)
+    auth_header = args.authorization
+    if not auth_header and args.id_token:
+        auth_header = f"Bearer {args.id_token}"
+
+    post_json, post_query = make_client(args.api_base, args.admin_key, auth_header)
     today = date.today().strftime("%Y-%m-%d")
 
     names = ["葵", "凛", "真央", "美月", "結衣", "楓", "ひなた", "さくら", "七海", "彩", "琴音", "乃愛", "花音", "心愛", "美咲", "陽菜"]
