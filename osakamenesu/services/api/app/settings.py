@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     slack_webhook_url: str | None = None
     notify_email_endpoint: str | None = None
     notify_line_endpoint: str | None = None
+    notify_from_email: str | None = None
     escalation_pending_threshold_minutes: int = 30
     escalation_check_interval_minutes: int = 5
     auth_magic_link_expire_minutes: int = 15
