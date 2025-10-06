@@ -1,5 +1,5 @@
 "use client"
-import { type FormEventHandler, useEffect, useMemo, useState, useTransition } from 'react'
+import { type FormEventHandler, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type FacetValue = {
@@ -34,6 +34,8 @@ export default function SearchFilters({ init, facets }: Props) {
   const sp = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const spKey = sp.toString()
+  const [isMobile, setIsMobile] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
 
   const extractParam = (key: string): string => {
     const initValue = init?.[key]
@@ -66,6 +68,29 @@ export default function SearchFilters({ init, facets }: Props) {
   const [discountsOnly, setDiscountsOnly] = useState<boolean>(() => extractParam('discounts_only') === 'true')
   const [diariesOnly, setDiariesOnly] = useState<boolean>(() => extractParam('diaries_only') === 'true')
   const [sort, setSort] = useState<string>(() => extractParam('sort') || 'recommended')
+  const firstRender = useRef(true)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const media = window.matchMedia('(max-width: 768px)')
+    const handle = (event: MediaQueryListEvent | MediaQueryList) => {
+      const matches = 'matches' in event ? event.matches : event.matches
+      setIsMobile(matches)
+      if (!matches) setShowFilters(true)
+    }
+    handle(media)
+    const listener = (event: MediaQueryListEvent) => handle(event)
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
+
+  const scrollToResults = () => {
+    if (typeof window === 'undefined') return
+    requestAnimationFrame(() => {
+      const el = document.getElementById('search-results')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   function push() {
     const params = new URLSearchParams()
@@ -84,10 +109,9 @@ export default function SearchFilters({ init, facets }: Props) {
     params.set('page', '1')
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`)
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
+      scrollToResults()
     })
+    if (isMobile) setShowFilters(false)
     try { localStorage.setItem('search.last', params.toString()) } catch {}
   }
 
@@ -106,10 +130,9 @@ export default function SearchFilters({ init, facets }: Props) {
     setSort('recommended')
     startTransition(() => {
       router.replace(pathname)
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
+      scrollToResults()
     })
+    if (isMobile) setShowFilters(false)
     try { localStorage.removeItem('search.last') } catch {}
   }
 
@@ -136,6 +159,18 @@ export default function SearchFilters({ init, facets }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    if (isMobile) {
+      setShowFilters(false)
+      scrollToResults()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spKey, isMobile])
 
   const areaOptions = useMemo(() => {
     const facetList = facets?.area || []
@@ -181,13 +216,27 @@ export default function SearchFilters({ init, facets }: Props) {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      role="search"
-      aria-label="店舗検索条件"
-      className="sticky top-16 z-20 space-y-4 rounded-section border border-neutral-borderLight/70 bg-white/85 p-5 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
-      aria-busy={isPending}
-    >
+    <div className="relative space-y-2">
+      {isMobile ? (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-neutral-text">検索条件</span>
+          <button
+            type="button"
+            onClick={() => setShowFilters(prev => !prev)}
+            className="inline-flex items-center gap-1 rounded-badge border border-neutral-borderLight px-3 py-1 text-xs font-semibold text-neutral-text transition hover:border-brand-primary hover:text-brand-primary"
+          >
+            {showFilters ? '条件を閉じる' : '条件を開く'}
+          </button>
+        </div>
+      ) : null}
+      <form
+        onSubmit={onSubmit}
+        role="search"
+        aria-label="店舗検索条件"
+        className={`space-y-4 rounded-section border border-neutral-borderLight/70 bg-white/85 p-5 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70 ${isMobile ? '' : 'lg:sticky lg:top-16 lg:z-20'} ${isMobile && !showFilters ? 'border-none bg-transparent p-0 shadow-none backdrop-blur-none space-y-0' : ''}`}
+        aria-busy={isPending}
+      >
+        <div className={isMobile && !showFilters ? 'hidden' : 'space-y-4'}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <span className="text-xs font-semibold uppercase tracking-wide text-neutral-textMuted">検索条件</span>
@@ -325,6 +374,8 @@ export default function SearchFilters({ init, facets }: Props) {
           写メ日記掲載あり{diariesFacetCount ? ` (${diariesFacetCount})` : ''}
         </label>
       </div>
-    </form>
+        </div>
+      </form>
+    </div>
   )
 }
