@@ -4,6 +4,7 @@ from datetime import datetime, timezone, date
 from typing import Any, Dict, Iterable, List, Set
 from uuid import UUID
 import uuid
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
@@ -37,6 +38,9 @@ from ..schemas import (
     DiaryListResponse,
 )
 from ..utils.profiles import build_profile_doc, infer_store_name, compute_review_summary, PRICE_BANDS
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api/v1/shops", tags=["shops"])
@@ -683,26 +687,47 @@ async def search_shops(
         has_diaries=diaries_only,
     )
     sort_expr = _resolve_sort(sort)
-    res = meili_search(
-        q,
-        filter_expr,
-        sort_expr,
-        page,
-        page_size,
-        facets=[
-            "area",
-            "nearest_station",
-            "station_line",
-            "service_type",
-            "body_tags",
-            "today",
-            "price_band",
-            "ranking_badges",
-            "has_promotions",
-            "has_discounts",
-            "has_diaries",
-        ],
-    )
+    try:
+        res = meili_search(
+            q,
+            filter_expr,
+            sort_expr,
+            page,
+            page_size,
+            facets=[
+                "area",
+                "nearest_station",
+                "station_line",
+                "service_type",
+                "body_tags",
+                "today",
+                "price_band",
+                "ranking_badges",
+                "has_promotions",
+                "has_discounts",
+                "has_diaries",
+            ],
+        )
+    except Exception:
+        logger.exception(
+            "failed to query meilisearch",
+            extra={
+                "query": q,
+                "filter": filter_expr,
+                "sort": sort_expr,
+                "page": page,
+                "page_size": page_size,
+            },
+        )
+        empty = ShopSearchResponse(
+            page=page,
+            page_size=page_size,
+            total=0,
+            results=[],
+            facets={},
+        ).model_dump()
+        empty["_error"] = "search temporarily unavailable"
+        return empty
     hits = res.get("hits", [])
     results = [_doc_to_shop_summary(doc) for doc in hits]
 
