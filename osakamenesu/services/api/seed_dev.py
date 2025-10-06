@@ -5,7 +5,7 @@ import os
 import random
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from urllib import request, parse, error
 
@@ -89,6 +89,7 @@ def main(argv: list[str]) -> int:
 
     rng = random.Random(42)
     created_ids: list[str] = []
+    bulk_updates: list[dict] = []
     for i in range(args.count):
         name = names[i % len(names)] + (str((i // len(names)) + 1) if i >= len(names) else "")
         area = areas[i % len(areas)]
@@ -209,8 +210,6 @@ def main(argv: list[str]) -> int:
         pid = res["id"]
         created_ids.append(pid)
 
-        # Diary API は未実装のためスキップ
-
         # Availability for today by ratio
         if rng.random() < args.today_rate:
             post_query("/api/admin/availabilities", {"profile_id": pid, "date": today})
@@ -221,9 +220,69 @@ def main(argv: list[str]) -> int:
         post_query("/api/admin/outlinks", {"profile_id": pid, "kind": "tel",  "token": f"tel-{token_suffix}",  "target_url": f"tel:0900000{i:03}"})
         post_query("/api/admin/outlinks", {"profile_id": pid, "kind": "web",  "token": f"web-{token_suffix}",  "target_url": f"https://example.com/{pid}"})
 
+        # Prepare extended content payload (reviews, diaries, availability)
+        review_entries = [
+            {
+                "external_id": f"{pid}-rev-{idx}",
+                "score": int(4 + ((i + idx) % 2)),
+                "title": f"施術満足度 {idx + 1}",
+                "body": "丁寧な対応でリラックスできました。次回もお願いしたいです。",
+                "author_alias": f"会員{idx + 1:02}",
+                "visited_at": (date.today() - timedelta(days=idx * 2)).isoformat(),
+                "status": "published",
+            }
+            for idx in range(2)
+        ]
+
+        diary_entries = [
+            {
+                "external_id": f"{pid}-diary-{idx}",
+                "title": f"本日の出勤情報 {idx + 1}",
+                "body": "ゆったり癒しの時間をご提供します。ご予約お待ちしております。",
+                "photos": [f"https://picsum.photos/seed/diary{i}-{idx}/600/400"],
+                "hashtags": ["写メ日記", area, "癒し"],
+                "created_at": (
+                    datetime.now(timezone.utc) - timedelta(hours=idx * 6)
+                ).isoformat(),
+                "status": "published",
+            }
+            for idx in range(2)
+        ]
+
+        availability_entries = []
+        for offset in range(3):
+            slot_date = date.today() + timedelta(days=offset)
+            start = datetime.combine(slot_date, datetime.min.time(), tzinfo=timezone.utc) + timedelta(hours=12)
+            end = start + timedelta(hours=2)
+            availability_entries.append(
+                {
+                    "date": slot_date.isoformat(),
+                    "slots": [
+                        {
+                            "start_at": start.isoformat(),
+                            "end_at": end.isoformat(),
+                            "status": "open",
+                        }
+                    ],
+                }
+            )
+
+        bulk_updates.append(
+            {
+                "shop_id": pid,
+                "service_tags": body_tags,
+                "reviews": review_entries,
+                "diaries": diary_entries,
+                "availability": availability_entries,
+            }
+        )
+
         time.sleep(0.05)
 
-    # Reindex all
+    if bulk_updates:
+        post_json("/api/admin/shops/content:bulk", {"shops": bulk_updates})
+
+    # Reindex all to pick up newly seeded content
     post_query("/api/admin/reindex", {})
 
     print(json.dumps({"seeded": len(created_ids), "ids": created_ids}, ensure_ascii=False))
