@@ -73,13 +73,12 @@ export default function SearchFilters({ init, facets }: Props) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const media = window.matchMedia('(max-width: 768px)')
-    const handle = (event: MediaQueryListEvent | MediaQueryList) => {
-      const matches = 'matches' in event ? event.matches : event.matches
+    const applyMatch = (matches: boolean) => {
       setIsMobile(matches)
       if (!matches) setShowFilters(true)
     }
-    handle(media)
-    const listener = (event: MediaQueryListEvent) => handle(event)
+    applyMatch(media.matches)
+    const listener = (event: MediaQueryListEvent) => applyMatch(event.matches)
     media.addEventListener('change', listener)
     return () => media.removeEventListener('change', listener)
   }, [])
