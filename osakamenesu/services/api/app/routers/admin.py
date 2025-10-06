@@ -761,7 +761,10 @@ async def admin_bulk_ingest_shop_content(
             errors.append({"shop_id": str(entry.shop_id), "error": str(exc)})
             continue
 
-        await db.refresh(profile)
+        try:
+            await db.refresh(profile, attribute_names=["reviews", "diaries"])
+        except Exception:
+            await db.refresh(profile)
 
         today = datetime.now(JST).date()
         res_today = await db.execute(
