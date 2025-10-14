@@ -1,5 +1,6 @@
 import SearchFilters from '@/components/SearchFilters'
 import ShopCard, { type ShopHit } from '@/components/shop/ShopCard'
+import TherapistCard, { type TherapistHit } from '@/components/staff/TherapistCard'
 import { Badge } from '@/components/ui/Badge'
 import { Section } from '@/components/ui/Section'
 import { Card } from '@/components/ui/Card'
@@ -34,6 +35,28 @@ const SAMPLE_RESULTS: ShopHit[] = [
     diary_count: 12,
     has_diaries: true,
     updated_at: '2025-10-01T09:00:00+09:00',
+    staff_preview: [
+      {
+        id: 'therapist-aki',
+        name: '葵',
+        alias: 'Aoi',
+        headline: '丁寧なオイルトリートメントで人気のセラピスト',
+        rating: 4.6,
+        review_count: 87,
+        specialties: ['リンパ', 'ホットストーン'],
+        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=640&q=80',
+      },
+      {
+        id: 'therapist-rin',
+        name: '凛',
+        alias: 'Rin',
+        headline: 'ストレッチと指圧を組み合わせた独自施術',
+        rating: 4.3,
+        review_count: 52,
+        specialties: ['ストレッチ', '指圧'],
+        avatar_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80',
+      },
+    ],
   },
   {
     id: 'sample-umeda-suite',
@@ -60,6 +83,17 @@ const SAMPLE_RESULTS: ShopHit[] = [
     price_band_label: '120分 18,000円〜',
     diary_count: 4,
     updated_at: '2025-09-29T12:00:00+09:00',
+    staff_preview: [
+      {
+        id: 'therapist-misaki',
+        name: '美咲',
+        headline: 'アロマ×ヒーリングで極上のリラックス体験を提供',
+        rating: 4.9,
+        review_count: 64,
+        specialties: ['ホットストーン', 'ディープリンパ'],
+        avatar_url: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=640&q=80',
+      },
+    ],
   },
   {
     id: 'sample-shinsaibashi-lounge',
@@ -87,6 +121,27 @@ const SAMPLE_RESULTS: ShopHit[] = [
     diary_count: 8,
     has_diaries: true,
     updated_at: '2025-09-30T22:00:00+09:00',
+    staff_preview: [
+      {
+        id: 'therapist-hinata',
+        name: '陽菜',
+        alias: 'Hinata',
+        headline: '笑顔と包み込むタッチでリピーター多数',
+        rating: 4.4,
+        review_count: 38,
+        specialties: ['ドライヘッドスパ', 'ストレッチ'],
+        avatar_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80',
+      },
+      {
+        id: 'therapist-yuki',
+        name: '優希',
+        headline: 'アロマとリンパを組み合わせたしっかり圧で疲れを解消',
+        rating: 4.5,
+        review_count: 44,
+        specialties: ['肩こりケア', 'アロマトリートメント'],
+        avatar_url: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=640&q=80',
+      },
+    ],
   },
 ]
 
@@ -102,6 +157,17 @@ type Promotion = {
   description?: string | null
   expires_at?: string | null
   highlight?: string | null
+}
+
+type StaffPreview = {
+  id?: string
+  name: string
+  alias?: string | null
+  headline?: string | null
+  rating?: number | null
+  review_count?: number | null
+  avatar_url?: string | null
+  specialties?: string[] | null
 }
 
 type Params = {
@@ -293,13 +359,47 @@ function buildHighlights(facets: Record<string, FacetValue[]>, hits: ShopHit[]) 
   return highlights
 }
 
+function buildTherapistHits(hits: ShopHit[]): TherapistHit[] {
+  return hits.flatMap((hit) => {
+    if (!Array.isArray(hit.staff_preview) || hit.staff_preview.length === 0) return []
+    return hit.staff_preview
+      .filter((staff): staff is StaffPreview & { name: string } => Boolean(staff && staff.name))
+      .map((staff, index) => {
+        const staffId = staff.id || `${index}`
+        const uniqueId = `${hit.id}-${staffId}`
+        const specialties = Array.isArray(staff.specialties)
+          ? staff.specialties.filter((tag): tag is string => Boolean(tag)).map((tag) => tag.trim()).filter(Boolean)
+          : []
+        return {
+          id: uniqueId,
+          staffId,
+          name: staff.name,
+          alias: staff.alias ?? null,
+          headline: staff.headline ?? null,
+          specialties,
+          avatarUrl: staff.avatar_url ?? null,
+          rating: staff.rating ?? hit.rating ?? null,
+          reviewCount: staff.review_count ?? hit.review_count ?? null,
+          shopId: hit.id,
+          shopSlug: hit.slug ?? null,
+          shopName: hit.store_name || hit.name,
+          shopArea: hit.area,
+          shopAreaName: hit.area_name ?? null,
+        } satisfies TherapistHit
+      })
+  })
+}
+
 export default async function SearchPage({ searchParams }: { searchParams: Params }) {
   const data = await fetchProfiles(searchParams)
   const { page, page_size: pageSize, total, results, facets, _error } = data
   const hits = results ?? []
   const useSampleData = hits.length === 0
   const displayHits = useSampleData ? SAMPLE_RESULTS : hits
-  const displayTotal = useSampleData ? SAMPLE_RESULTS.length : total
+  const therapistHits = buildTherapistHits(displayHits)
+  const showTherapists = therapistHits.length > 0
+  const baseTotal = useSampleData ? SAMPLE_RESULTS.length : total
+  const displayTotal = showTherapists ? therapistHits.length : baseTotal
   const displayPageSize = useSampleData ? SAMPLE_RESULTS.length : pageSize
   const displayPage = useSampleData ? 1 : page
   const displayLastPage = useSampleData ? 1 : Math.max(1, Math.ceil((total || 0) / (pageSize || 12)))
@@ -307,28 +407,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
   const displayHighlights = useSampleData ? buildHighlights({}, SAMPLE_RESULTS) : highlights
   const editorialSpots = buildEditorialSpots(total)
   const displayEditorialSpots = useSampleData ? buildEditorialSpots(SAMPLE_RESULTS.length) : editorialSpots
-
-  type GridItem =
-    | { kind: 'shop'; value: ShopHit }
-    | { kind: 'spotlight'; value: SpotlightItem }
-
-  const gridItems: GridItem[] = []
-  const prSlots = [1, 8, 15]
-
-  if (displayHits.length > 0) {
-    let prIndex = 0
-    displayHits.forEach((hit, idx) => {
-      if (prSlots.includes(idx + 1) && prIndex < displayEditorialSpots.length) {
-        gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
-        prIndex += 1
-      }
-      gridItems.push({ kind: 'shop', value: hit })
-    })
-    while (gridItems.length < displayHits.length + displayEditorialSpots.length && prIndex < displayEditorialSpots.length) {
-      gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
-      prIndex += 1
-    }
-  }
 
   const areaFacetSource = facets.area ?? []
   const derivedAreaFacets: FacetValue[] = areaFacetSource.length
@@ -362,6 +440,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
     return `/search?${sp.toString()}`
   }
 
+  const resultUnit = showTherapists ? '名' : '件'
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-neutral-surface">
       <a
@@ -379,16 +459,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
               <span className="inline-flex items-center gap-1 rounded-badge border border-brand-primary/20 bg-brand-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-primary/90">
                 大阪メンエス.com
               </span>
-              <h1 className="text-3xl font-semibold tracking-tight text-neutral-text">大阪メンエスを探す</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-neutral-text">
+                {showTherapists ? 'セラピストを探す' : '大阪メンエスを探す'}
+              </h1>
               <p className="max-w-2xl text-sm leading-relaxed text-neutral-textMuted">
-                CityHeaven の情報量と丁寧さをそのままに、メンエス選びに必要な情報を最短で届ける検索ページです。気になるエリアや料金帯を組み合わせて、ぴったりの店舗を見つけましょう。
+                CityHeaven の情報量と丁寧さをそのままに、メンエス選びに必要な情報を最短で届ける検索ページです。
+                {showTherapists
+                  ? ' エリアや得意な施術から、あなたにぴったりのセラピストを見つけてください。'
+                  : ' 気になるエリアや料金帯を組み合わせて、ぴったりの店舗を見つけましょう。'}
               </p>
             </div>
             <div className="flex flex-col items-start gap-3 text-left lg:items-end lg:text-right">
               <span className="text-xs font-semibold uppercase tracking-wide text-brand-primary/80">掲載件数</span>
               <div className="text-3xl font-bold text-neutral-text">
                 {Intl.NumberFormat('ja-JP').format(displayTotal)}
-                <span className="ml-1 text-base font-medium text-neutral-textMuted">件</span>
+                <span className="ml-1 text-base font-medium text-neutral-textMuted">{resultUnit}</span>
               </div>
               <span className="text-xs text-neutral-textMuted">毎日アップデート中</span>
             </div>
@@ -427,55 +512,95 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
           <Section
             id="search-results"
             ariaLive="polite"
-            title={`検索結果 ${Intl.NumberFormat('ja-JP').format(displayTotal)}件`}
-            subtitle={displayHits.length ? `ページ ${displayPage} / ${displayLastPage}（${displayPageSize}件ずつ表示）` : '条件を調整すると候補が表示されます'}
-            actions={displayHits.length ? <span className="text-xs text-neutral-textMuted">最新情報は毎日更新</span> : undefined}
+            title={`検索結果 ${Intl.NumberFormat('ja-JP').format(displayTotal)}${resultUnit}`}
+            subtitle={
+              showTherapists
+                ? displayTotal > 0
+                  ? '人気セラピストをピックアップ'
+                  : '条件を調整するとセラピストが表示されます'
+                : displayHits.length
+                  ? `ページ ${displayPage} / ${displayLastPage}（${displayPageSize}件ずつ表示）`
+                  : '条件を調整すると候補が表示されます'
+            }
+            actions={displayTotal > 0 ? <span className="text-xs text-neutral-textMuted">最新情報は毎日更新</span> : undefined}
             className="border border-neutral-borderLight/70 bg-white/85 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
           >
             {useSampleData ? (
               <div className="mb-6 rounded-card border border-brand-primary/30 bg-brand-primary/5 p-4 text-sm text-brand-primaryDark">
-                API から検索結果を取得できなかったため、参考用のサンプル店舗を表示しています。
+                API から検索結果を取得できなかったため、参考用のサンプル{showTherapists ? 'セラピスト' : '店舗'}を表示しています。
               </div>
             ) : null}
-            {displayHits.length === 0 ? (
+            {displayTotal === 0 ? (
               <div className="flex flex-col items-center justify-center gap-4 rounded-card border border-dashed border-neutral-borderLight/80 bg-neutral-surfaceAlt/70 p-10 text-center text-neutral-textMuted">
-                <p className="text-base font-medium text-neutral-text">一致する店舗が見つかりませんでした</p>
-                <p className="text-sm leading-relaxed">
-                  キーワードを減らす・エリアを広げる・予算条件を調整するなど、条件を緩めて再検索してみてください。
+                <p className="text-base font-medium text-neutral-text">
+                  {showTherapists ? '一致するセラピストが見つかりませんでした' : '一致する店舗が見つかりませんでした'}
                 </p>
+                <p className="text-sm leading-relaxed">キーワードや条件を調整すると候補が表示される場合があります。</p>
               </div>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {(gridItems.length ? gridItems : displayHits.map((hit) => ({ kind: 'shop', value: hit })) ).map((item) =>
-                  item.kind === 'shop' ? (
-                    <ShopCard key={item.value.id} hit={item.value} />
-                  ) : (
-                    <a
-                      key={item.value.id}
-                      href={item.value.href}
-                      className="block focus:outline-none"
-                    >
-                      <Card interactive className="h-full bg-gradient-to-br from-brand-primary/15 via-brand-primary/10 to-brand-secondary/15 p-6">
-                        <Badge variant="brand" className="mb-3 w-fit shadow-sm">
-                          PR
-                        </Badge>
-                        <h3 className="text-lg font-semibold text-neutral-text">{item.value.title}</h3>
-                        <p className="mt-2 text-sm text-neutral-textMuted">{item.value.description}</p>
-                        <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-primaryDark">
-                          くわしく見る
-                          <span aria-hidden>→</span>
-                        </span>
-                      </Card>
-                    </a>
-                  )
+              <>
+                {showTherapists ? (
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {therapistHits.map((hit) => (
+                      <TherapistCard key={hit.id} hit={hit} />
+                    ))}
+                  </div>
+                ) : (
+                  (() => {
+                    type GridItem =
+                      | { kind: 'shop'; value: ShopHit }
+                      | { kind: 'spotlight'; value: SpotlightItem }
+
+                    const gridItems: GridItem[] = []
+                    const prSlots = [1, 8, 15]
+
+                    if (displayHits.length > 0) {
+                      let prIndex = 0
+                      displayHits.forEach((hit, idx) => {
+                        if (prSlots.includes(idx + 1) && prIndex < displayEditorialSpots.length) {
+                          gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
+                          prIndex += 1
+                        }
+                        gridItems.push({ kind: 'shop', value: hit })
+                      })
+                      while (gridItems.length < displayHits.length + displayEditorialSpots.length && prIndex < displayEditorialSpots.length) {
+                        gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
+                        prIndex += 1
+                      }
+                    }
+
+                    return (
+                      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                        {(gridItems.length ? gridItems : displayHits.map((hit) => ({ kind: 'shop', value: hit }))).map((item) =>
+                          item.kind === 'shop' ? (
+                            <ShopCard key={item.value.id} hit={item.value} />
+                          ) : (
+                            <a key={item.value.id} href={item.value.href} className="block focus:outline-none">
+                              <Card interactive className="h-full bg-gradient-to-br from-brand-primary/15 via-brand-primary/10 to-brand-secondary/15 p-6">
+                                <Badge variant="brand" className="mb-3 w-fit shadow-sm">
+                                  PR
+                                </Badge>
+                                <h3 className="text-lg font-semibold text-neutral-text">{item.value.title}</h3>
+                                <p className="mt-2 text-sm text-neutral-textMuted">{item.value.description}</p>
+                                <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-primaryDark">
+                                  くわしく見る
+                                  <span aria-hidden>→</span>
+                                </span>
+                              </Card>
+                            </a>
+                          ),
+                        )}
+                      </div>
+                    )
+                  })()
                 )}
-              </div>
+              </>
             )}
 
-            {displayHits.length > 0 ? (
+            {!showTherapists && displayHits.length > 0 ? (
               <nav className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-borderLight/70 pt-5 text-sm" aria-label="検索結果ページネーション">
                 <div className="text-neutral-textMuted" aria-live="polite">
-                  {displayPage} / {displayLastPage}ページ（{Intl.NumberFormat('ja-JP').format(displayTotal)}件）
+                  {displayPage} / {displayLastPage}ページ（{Intl.NumberFormat('ja-JP').format(displayTotal)}{resultUnit}）
                 </div>
                 <div className="flex items-center gap-2">
                   {displayPage > 1 ? (

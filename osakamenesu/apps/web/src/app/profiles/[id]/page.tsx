@@ -2,14 +2,16 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Metadata } from 'next'
+import { createHash } from 'crypto'
 import Gallery from '@/components/Gallery'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Section } from '@/components/ui/Section'
 import { buildApiUrl, resolveApiBases } from '@/lib/api'
+import { SAMPLE_SHOPS, type SampleShop } from '@/lib/sampleShops'
 
-type Props = { params: { id: string } }
+type Props = { params: { id: string }; searchParams?: Record<string, string | string[] | undefined> }
 
 type MediaImage = { url: string; kind?: string | null; caption?: string | null }
 type Contact = {
@@ -35,7 +37,7 @@ type Promotion = {
   expires_at?: string | null
   highlight?: string | null
 }
-type StaffSummary = {
+export type StaffSummary = {
   id: string
   name: string
   alias?: string | null
@@ -70,7 +72,7 @@ type DiaryEntry = {
   published_at?: string | null
 }
 
-type ShopDetail = {
+export type ShopDetail = {
   id: string
   name: string
   area: string
@@ -111,7 +113,91 @@ async function fetchShop(id: string): Promise<ShopDetail> {
     }
   }
 
+  const fallback = SAMPLE_SHOPS.find((shop) => shop.id === id || shop.slug === id)
+  if (fallback) return convertSampleShop(fallback)
+
   notFound()
+}
+
+function uuidFromString(input: string): string {
+  const hash = createHash('sha1').update(input).digest('hex')
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`
+}
+
+function convertSampleShop(sample: SampleShop): ShopDetail {
+  const staff = (sample.staff || []).map((member, index) => {
+    const sourceId = member.id || `${sample.id}-staff-${index}`
+    return {
+      id: sourceId,
+      name: member.name,
+      alias: member.alias ?? null,
+      avatar_url: member.avatar_url ?? null,
+      headline: member.headline ?? null,
+      rating: member.rating ?? null,
+      review_count: member.review_count ?? null,
+      specialties: member.specialties ?? null,
+    }
+  })
+
+  const staffIdMap = new Map<string, string>()
+  staff.forEach((member, index) => {
+    const sourceId = sample.staff?.[index]?.id || `${sample.id}-staff-${index}`
+    staffIdMap.set(sourceId, member.id)
+  })
+
+  const availability_calendar = sample.availability_calendar
+    ? {
+        shop_id: sample.id,
+        generated_at: sample.availability_calendar.generated_at,
+        days: sample.availability_calendar.days.map((day) => ({
+          date: day.date,
+          is_today: day.is_today ?? null,
+          slots: day.slots.map((slot) => ({
+            start_at: slot.start_at,
+            end_at: slot.end_at,
+            status: slot.status,
+            staff_id: slot.staff_id ? staffIdMap.get(slot.staff_id) || slot.staff_id : null,
+            menu_id: slot.menu_id ?? null,
+          })),
+        })),
+      }
+    : null
+
+  return {
+    id: sample.id,
+    name: sample.name,
+    area: sample.area,
+    area_name: sample.area_name ?? null,
+    min_price: sample.min_price,
+    max_price: sample.max_price,
+    description: sample.description ?? null,
+    catch_copy: sample.catch_copy ?? null,
+    photos: sample.photos?.map((photo) => ({ url: photo.url })) ?? null,
+    contact: sample.contact ?? null,
+    menus: sample.menus?.map((menu, index) => ({
+      id: menu.id || uuidFromString(`menu:${sample.id}:${index}`),
+      name: menu.name,
+      description: menu.description ?? null,
+      duration_minutes: menu.duration_minutes ?? null,
+      price: menu.price,
+      currency: 'JPY',
+      is_reservable_online: true,
+      tags: menu.tags ?? null,
+    })) ?? null,
+    staff,
+    availability_calendar,
+    badges: sample.badges ?? null,
+    today_available: sample.today_available ?? null,
+    service_tags: sample.service_tags ?? null,
+    metadata: sample.metadata ?? null,
+    store_name: sample.store_name ?? null,
+    promotions: sample.promotions ?? null,
+    ranking_reason: sample.ranking_reason ?? null,
+    reviews: sample.reviews ?? null,
+    diary_count: sample.diary_count ?? null,
+    has_diaries: sample.has_diaries ?? null,
+    diaries: sample.diaries ?? null,
+  }
 }
 
 const formatYen = (n: number) => `¥${Number(n).toLocaleString('ja-JP')}`
@@ -163,7 +249,7 @@ function formatDayLabel(dateStr: string): string {
   return dayFormatter.format(date)
 }
 
-export default async function ProfilePage({ params }: Props) {
+export default async function ProfilePage({ params, searchParams }: Props) {
   const shop = await fetchShop(params.id)
   const photos = uniquePhotos(shop.photos)
   const badges = shop.badges || []
@@ -173,14 +259,51 @@ export default async function ProfilePage({ params }: Props) {
   const menus = Array.isArray(shop.menus) ? shop.menus : []
   const staff = Array.isArray(shop.staff) ? shop.staff : []
   const availability = shop.availability_calendar?.days || []
+  const slotParamValue = (() => {
+    if (!searchParams) return undefined
+    const value = searchParams.slot
+    if (Array.isArray(value)) return value[0]
+    return value
+  })()
   const diaries = Array.isArray(shop.diaries) ? shop.diaries : []
-  const defaultSlotLocal = (() => {
+  const selectedSlot = (() => {
+    if (!slotParamValue) return null
+    const target = Date.parse(slotParamValue)
+    if (Number.isNaN(target)) return null
+    for (const day of availability) {
+      if (!day?.slots) continue
+      for (const slot of day.slots) {
+        const start = Date.parse(slot.start_at)
+        if (!Number.isNaN(start) && Math.abs(start - target) < 60_000) {
+          return slot
+        }
+      }
+    }
+    return null
+  })()
+
+  const firstOpenSlot = (() => {
     for (const day of availability) {
       if (!day?.slots) continue
       const openSlot = day.slots.find((slot) => slot.status === 'open')
-      if (openSlot) return toDateTimeLocal(openSlot.start_at)
+      if (openSlot) return openSlot
     }
-    return undefined
+    return null
+  })()
+
+  const defaultSlotLocal = (() => {
+    const slot = selectedSlot || firstOpenSlot
+    return slot ? toDateTimeLocal(slot.start_at) : undefined
+  })()
+
+  const defaultDurationMinutes = (() => {
+    const slot = selectedSlot || firstOpenSlot
+    if (!slot) return undefined
+    const start = new Date(slot.start_at)
+    const end = new Date(slot.end_at)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return undefined
+    const diff = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+    return diff || undefined
   })()
 
   const availabilityUpdatedLabel = shop.availability_calendar?.generated_at
@@ -389,6 +512,8 @@ export default async function ProfilePage({ params }: Props) {
             <ReservationForm
               shopId={shop.id}
               defaultStart={defaultSlotLocal}
+              defaultDurationMinutes={defaultDurationMinutes}
+              staffId={selectedSlot?.staff_id ?? undefined}
               tel={phone}
               lineId={lineId}
               shopName={shop.name}
@@ -602,3 +727,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
   }
 }
+
+export { fetchShop }
