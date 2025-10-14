@@ -43,6 +43,16 @@ export type ShopHit = {
   ranking_score?: number | null
   diary_count?: number | null
   has_diaries?: boolean | null
+  staff_preview?: Array<{
+    id?: string
+    name: string
+    alias?: string | null
+    headline?: string | null
+    rating?: number | null
+    review_count?: number | null
+    avatar_url?: string | null
+    specialties?: string[] | null
+  }> | null
 }
 
 const formatter = new Intl.NumberFormat('ja-JP')

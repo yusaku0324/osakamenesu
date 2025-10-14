@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useToast, ToastContainer } from './useToast'
 import ReservationContactBar from './ReservationContactBar'
@@ -11,6 +11,8 @@ export type ReservationFormProps = {
   tel?: string | null
   lineId?: string | null
   shopName?: string | null
+  defaultDurationMinutes?: number | null
+  staffId?: string | null
 }
 
 type FormState = {
@@ -37,14 +39,15 @@ function nextHourIsoLocal(minutesAhead = 120) {
   return buildIsoLocal(now)
 }
 
-export default function ReservationForm({ shopId, defaultStart, tel, lineId, shopName }: ReservationFormProps) {
+export default function ReservationForm({ shopId, defaultStart, defaultDurationMinutes, tel, lineId, shopName, staffId }: ReservationFormProps) {
   const initialStart = defaultStart || nextHourIsoLocal(180)
+  const initialDuration = defaultDurationMinutes && defaultDurationMinutes > 0 ? defaultDurationMinutes : 60
   const [form, setForm] = useState<FormState>({
     name: '',
     phone: '',
     email: '',
     desiredStart: initialStart,
-    durationMinutes: 60,
+    durationMinutes: initialDuration,
     notes: '',
     marketingOptIn: false,
   })
@@ -55,6 +58,32 @@ export default function ReservationForm({ shopId, defaultStart, tel, lineId, sho
   const [lastReservationId, setLastReservationId] = useState<string | null>(null)
   const [lastPayload, setLastPayload] = useState<{ desiredStart: string; duration: number; notes?: string } | null>(null)
   const hasContact = Boolean(tel || lineId)
+  const minutesOptions = (() => {
+    const options = [...MINUTES_OPTIONS]
+    if (!options.includes(form.durationMinutes)) {
+      options.push(form.durationMinutes)
+      options.sort((a, b) => a - b)
+    }
+    return options
+  })()
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const shopUuid = uuidPattern.test(shopId) ? shopId : null
+  const staffUuid = (() => {
+    if (!staffId) return undefined
+    return uuidPattern.test(staffId) ? staffId : undefined
+  })()
+
+  useEffect(() => {
+    if (defaultStart) {
+      setForm((prev) => ({ ...prev, desiredStart: defaultStart }))
+    }
+  }, [defaultStart])
+
+  useEffect(() => {
+    if (defaultDurationMinutes && defaultDurationMinutes > 0) {
+      setForm((prev) => ({ ...prev, durationMinutes: defaultDurationMinutes }))
+    }
+  }, [defaultDurationMinutes])
 
   function handleChange<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -68,10 +97,15 @@ export default function ReservationForm({ shopId, defaultStart, tel, lineId, sho
       return
     }
     const end = new Date(start.getTime() + form.durationMinutes * 60000)
+    if (!shopUuid) {
+      push('error', '現在の環境では予約送信を行えません。（デモデータ）')
+      return
+    }
     startTransition(async () => {
       try {
         const payload = {
-          shop_id: shopId,
+          shop_id: shopUuid,
+          staff_id: staffUuid,
           desired_start: new Date(start.getTime()).toISOString(),
           desired_end: new Date(end.getTime()).toISOString(),
           notes: form.notes || undefined,
@@ -98,7 +132,18 @@ export default function ReservationForm({ shopId, defaultStart, tel, lineId, sho
           }
         }
         if (!resp.ok) {
-          push('error', data?.detail || '予約の送信に失敗しました。しばらくしてから再度お試しください。')
+          const errorMessage = (() => {
+            if (typeof data?.detail === 'string') return data.detail
+            if (Array.isArray(data?.detail)) {
+              return data.detail
+                .map((item: any) => item?.msg)
+                .filter(Boolean)
+                .join('\n')
+            }
+            if (data?.detail?.msg) return data.detail.msg
+            return '予約の送信に失敗しました。しばらくしてから再度お試しください。'
+          })()
+          push('error', errorMessage)
           return
         }
         push('success', '送信が完了しました。店舗からの折り返しをお待ちください。')
@@ -166,7 +211,7 @@ export default function ReservationForm({ shopId, defaultStart, tel, lineId, sho
               onChange={e => handleChange('durationMinutes', Number(e.target.value))}
               className="w-full border rounded px-3 py-2"
             >
-              {MINUTES_OPTIONS.map(mins => (
+              {minutesOptions.map(mins => (
                 <option key={mins} value={mins}>{mins}分</option>
               ))}
             </select>
