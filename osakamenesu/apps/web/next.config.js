@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const INTERNAL_API_BASE =
   process.env.OSAKAMENESU_API_INTERNAL_BASE ||
@@ -31,6 +33,10 @@ const nextConfig = {
         },
       ],
     }
+  },
+  webpack(config) {
+    config.resolve.alias['@'] = path.resolve(__dirname, 'src')
+    return config
   },
 }
 
