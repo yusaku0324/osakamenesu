@@ -141,13 +141,33 @@ jobs:
           docker push "$IMAGE"
 
       - name: Deploy osakamenesu-api to Cloud Run
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
         run: |
           gcloud run services update "$CLOUD_RUN_API_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
-            --image "$IMAGE"
+            --image "$IMAGE" \
+            --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
+
+      - name: Deploy osakamenesu-web to Cloud Run
+        env:
+          CLOUD_RUN_WEB_SERVICE: ${{ secrets.CLOUD_RUN_WEB_SERVICE }}
+          CLOUD_RUN_REGION: ${{ secrets.CLOUD_RUN_REGION }}
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          NEXT_PUBLIC_OSAKAMENESU_API_BASE: ${{ secrets.NEXT_PUBLIC_OSAKAMENESU_API_BASE }}
+          ADMIN_BASIC_USER: ${{ secrets.ADMIN_BASIC_USER }}
+          ADMIN_BASIC_PASS: ${{ secrets.ADMIN_BASIC_PASS }}
+        run: |
+          gcloud run deploy "$CLOUD_RUN_WEB_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --source osakamenesu/apps/web \
+            --allow-unauthenticated \
+            --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE},ADMIN_BASIC_USER=${ADMIN_BASIC_USER},ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
 
       - name: Seed staging data with sample profiles
         env:
+          CLOUD_RUN_API_SERVICE: ${{ secrets.CLOUD_RUN_API_SERVICE }}
+          CLOUD_RUN_REGION: ${{ secrets.CLOUD_RUN_REGION }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
         run: |
           set -euo pipefail
