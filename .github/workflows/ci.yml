@@ -152,9 +152,11 @@ jobs:
       - name: Deploy osakamenesu-api to Cloud Run
         env:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           gcloud run services update "$CLOUD_RUN_API_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
+            --add-cloudsql-instances "${GCP_PROJECT_ID}:${CLOUD_RUN_REGION}:osakamenesu-pg" \
             --image "$IMAGE" \
             --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
 
