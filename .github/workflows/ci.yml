@@ -157,35 +157,35 @@ jobs:
           CLOUD_RUN_REGION: ${{ secrets.CLOUD_RUN_REGION }}
         run: |
           python3 <<'PY'
-import os
-import sys
-from urllib.parse import urlparse, quote_plus
+          import os
+          import sys
+          from urllib.parse import urlparse, quote_plus
 
-raw = os.environ.get("RAW_DATABASE_URL", "").strip()
-if not raw:
-    print("::error::DATABASE_URL secret is empty. Please set secrets.DATABASE_URL.", file=sys.stderr)
-    sys.exit(1)
+          raw = os.environ.get("RAW_DATABASE_URL", "").strip()
+          if not raw:
+              print("::error::DATABASE_URL secret is empty. Please set secrets.DATABASE_URL.", file=sys.stderr)
+              sys.exit(1)
 
-project = os.environ["GCP_PROJECT_ID"]
-region = os.environ["CLOUD_RUN_REGION"]
+          project = os.environ["GCP_PROJECT_ID"]
+          region = os.environ["CLOUD_RUN_REGION"]
 
-parsed = urlparse(raw)
-username = parsed.username or "app"
-password = parsed.password or ""
-database = parsed.path.lstrip("/") or "osaka_menesu"
-scheme = parsed.scheme or "postgresql+asyncpg"
+          parsed = urlparse(raw)
+          username = parsed.username or "app"
+          password = parsed.password or ""
+          database = parsed.path.lstrip("/") or "osaka_menesu"
+          scheme = parsed.scheme or "postgresql+asyncpg"
 
-hostname = (parsed.hostname or "").lower()
-if hostname in {"localhost", "127.0.0.1", ""}:
-    encoded = quote_plus(password)
-    final = f"{scheme}://{username}:{encoded}@/{database}?host=/cloudsql/{project}:{region}:osakamenesu-pg"
-else:
-    final = raw
+          hostname = (parsed.hostname or "").lower()
+          if hostname in {"localhost", "127.0.0.1", ""}:
+              encoded = quote_plus(password)
+              final = f"{scheme}://{username}:{encoded}@/{database}?host=/cloudsql/{project}:{region}:osakamenesu-pg"
+          else:
+              final = raw
 
-print(f"::add-mask::{final}")
-with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-    fh.write(f"database_url={final}\n")
-PY
+          print(f"::add-mask::{final}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"database_url={final}\n")
+          PY
 
       - name: Deploy osakamenesu-api to Cloud Run
         env:
