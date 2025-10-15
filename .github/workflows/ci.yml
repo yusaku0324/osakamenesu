@@ -140,6 +140,15 @@ jobs:
           docker build -t "$IMAGE" osakamenesu/services/api
           docker push "$IMAGE"
 
+      - name: Build and push web image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          WEB_IMAGE="gcr.io/$GCP_PROJECT_ID/osakamenesu-web:${IMAGE_TAG}"
+          echo "WEB_IMAGE=${WEB_IMAGE}" >> $GITHUB_ENV
+          docker build -t "$WEB_IMAGE" osakamenesu/apps/web
+          docker push "$WEB_IMAGE"
+
       - name: Deploy osakamenesu-api to Cloud Run
         env:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
@@ -157,11 +166,11 @@ jobs:
           NEXT_PUBLIC_OSAKAMENESU_API_BASE: ${{ secrets.NEXT_PUBLIC_OSAKAMENESU_API_BASE }}
           ADMIN_BASIC_USER: ${{ secrets.ADMIN_BASIC_USER }}
           ADMIN_BASIC_PASS: ${{ secrets.ADMIN_BASIC_PASS }}
+          WEB_IMAGE: ${{ env.WEB_IMAGE }}
         run: |
-          gcloud run deploy "$CLOUD_RUN_WEB_SERVICE" \
+          gcloud run services update "$CLOUD_RUN_WEB_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
-            --source osakamenesu/apps/web \
-            --allow-unauthenticated \
+            --image "$WEB_IMAGE" \
             --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE},ADMIN_BASIC_USER=${ADMIN_BASIC_USER},ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
 
       - name: Seed staging data with sample profiles
