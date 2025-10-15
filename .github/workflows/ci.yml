@@ -191,13 +191,15 @@ jobs:
         env:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           DATABASE_URL: ${{ steps.resolve-db-url.outputs.database_url }}
+          MEILI_HOST: ${{ secrets.MEILI_HOST }}
+          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           gcloud run services update "$CLOUD_RUN_API_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
             --add-cloudsql-instances "${GCP_PROJECT_ID}:${CLOUD_RUN_REGION}:osakamenesu-pg" \
             --image "$IMAGE" \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
+            --update-env-vars "DATABASE_URL=${DATABASE_URL},MEILI_HOST=${MEILI_HOST},MEILI_MASTER_KEY=${MEILI_MASTER_KEY},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
 
       - name: Deploy osakamenesu-web to Cloud Run
         env:
