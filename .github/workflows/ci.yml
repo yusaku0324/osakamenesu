@@ -158,7 +158,7 @@ jobs:
             --region "$CLOUD_RUN_REGION" \
             --add-cloudsql-instances "${GCP_PROJECT_ID}:${CLOUD_RUN_REGION}:osakamenesu-pg" \
             --image "$IMAGE" \
-            --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
+            --update-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
 
       - name: Deploy osakamenesu-web to Cloud Run
         env:
@@ -173,7 +173,7 @@ jobs:
           gcloud run services update "$CLOUD_RUN_WEB_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
             --image "$WEB_IMAGE" \
-            --set-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE},ADMIN_BASIC_USER=${ADMIN_BASIC_USER},ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
+            --update-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE},ADMIN_BASIC_USER=${ADMIN_BASIC_USER},ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
 
       - name: Seed staging data with sample profiles
         env:
