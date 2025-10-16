@@ -10,7 +10,7 @@ const SAMPLE_RESULTS: ShopHit[] = [
   {
     id: 'sample-namba-resort',
     slug: 'sample-namba-resort',
-    name: 'アロマリゾート 難波本店',
+    name: 'アロマリゾート 難波本店プレミアム',
     store_name: 'アロマリゾート 難波本店',
     area: '難波/日本橋',
     area_name: '難波/日本橋',
@@ -27,11 +27,11 @@ const SAMPLE_RESULTS: ShopHit[] = [
     online_reservation: true,
     has_promotions: true,
     promotions: [
-      { label: '新人割 ¥1,000OFF', expires_at: '2025-12-31' },
+      { label: 'プレミアム体験 ¥2,000OFF', expires_at: '2025-12-31' },
     ],
     promotion_count: 2,
-    ranking_reason: '口コミ評価4.7★。アロマ×リンパケアで全身リフレッシュ。',
-    price_band_label: '90分 11,000円〜',
+    ranking_reason: '口コミ評価4.7★。プレミアム個室で極上リラクゼーション体験。',
+    price_band_label: '90分 12,000円〜',
     diary_count: 12,
     has_diaries: true,
     updated_at: '2025-10-01T09:00:00+09:00',
