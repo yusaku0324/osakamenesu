@@ -282,6 +282,7 @@ def build_profile_doc(
     diary_count = _count_published_diaries(profile, contact_json)
     return {
         "id": str(profile.id),
+        "slug": profile.slug,
         "name": profile.name,
         "area": profile.area,
         "nearest_station": profile.nearest_station,

@@ -29,6 +29,7 @@ def now_utc() -> datetime:
 class Profile(Base):
     __tablename__ = 'profiles'
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str | None] = mapped_column(String(160), unique=True, index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     area: Mapped[str] = mapped_column(String(80), index=True)
     price_min: Mapped[int] = mapped_column(Integer, index=True)

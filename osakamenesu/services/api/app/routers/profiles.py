@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,10 +14,10 @@ from ..schemas import (
 )
 from ..meili import index_profile, search as meili_search, build_filter
 from ..utils.profiles import build_profile_doc, infer_height_age, infer_store_name
+from ..utils.slug import slugify
 from ..deps import require_admin, audit_admin
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,33 @@ def _to_doc(p: models.Profile, today: bool = False, tag_score: float = 0.0, ctr7
     )).model_dump()
 
 
+async def _ensure_unique_slug(
+    db: AsyncSession,
+    slug_source: str | None,
+    *,
+    fallback_seed: uuid.UUID,
+) -> str | None:
+    """
+    Generate a unique slug for profiles.
+
+    Returns None if no slug can be derived.
+    """
+    base = slugify(slug_source) if slug_source else ""
+    if not base:
+        base = fallback_seed.hex[:16]
+
+    candidate = base
+    counter = 2
+    while True:
+        existing = await db.scalar(
+            select(models.Profile.id).where(models.Profile.slug == candidate)
+        )
+        if not existing:
+            return candidate
+        candidate = f"{base}-{counter}"
+        counter += 1
+
+
 @router.post("/api/admin/profiles", summary="Create profile (seed)")
 async def create_profile(
     payload: ProfileCreate,
@@ -43,7 +71,9 @@ async def create_profile(
     _=Depends(require_admin),
     __=Depends(audit_admin),
 ):
+    slug = await _ensure_unique_slug(db, payload.slug or payload.name, fallback_seed=uuid.uuid4())
     p = models.Profile(
+        slug=slug,
         name=payload.name,
         area=payload.area,
         price_min=payload.price_min,
@@ -103,17 +133,20 @@ async def search_profiles(q: str | None = None, area: str | None = None, station
 
 @router.get("/api/profiles/{profile_id}", summary="Get profile detail")
 async def get_profile_detail(profile_id: str, db: AsyncSession = Depends(get_session)):
-    query = select(models.Profile)
+    p = None
     try:
-        # Try UUID lookup first
-        uuid.UUID(profile_id)
-        query = query.where(models.Profile.id == profile_id)
+        profile_uuid = uuid.UUID(profile_id)
     except ValueError:
-        # Fall back to name/slug-like search if UUID conversion fails
-        query = query.where(models.Profile.name == profile_id)
+        res = await db.execute(select(models.Profile).where(models.Profile.slug == profile_id))
+        p = res.scalar_one_or_none()
+        if not p:
+            res = await db.execute(select(models.Profile).where(models.Profile.name == profile_id))
+            p = res.scalar_one_or_none()
+    else:
+       if not p:
+            res = await db.execute(select(models.Profile).where(models.Profile.id == profile_uuid))
+            p = res.scalar_one_or_none()
 
-    res = await db.execute(query)
-    p = res.scalar_one_or_none()
     if not p:
         raise HTTPException(404, "profile not found")
 
@@ -146,6 +179,7 @@ async def get_profile_detail(profile_id: str, db: AsyncSession = Depends(get_ses
 
     detail = ProfileDetail(
         id=str(p.id),
+        slug=p.slug,
         name=p.name,
         area=p.area,
         price_min=p.price_min,

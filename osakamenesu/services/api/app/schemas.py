@@ -30,6 +30,7 @@ class FavoriteCreate(BaseModel):
 
 
 class ProfileCreate(BaseModel):
+    slug: Optional[str] = None
     name: str
     area: str
     price_min: int
@@ -62,6 +63,7 @@ class Promotion(BaseModel):
 
 class ProfileDoc(BaseModel):
     id: str
+    slug: Optional[str] = None
     name: str
     area: str
     price_min: int
@@ -109,6 +111,7 @@ class AvailabilityOut(BaseModel):
 
 class ProfileDetail(BaseModel):
     id: str
+    slug: Optional[str] = None
     name: str
     area: str
     price_min: int
