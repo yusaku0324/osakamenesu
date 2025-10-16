@@ -165,6 +165,7 @@ function convertSampleShop(sample: SampleShop): ShopDetail {
 
   return {
     id: sample.id,
+    slug: sample.slug ?? sample.id,
     name: sample.name,
     area: sample.area,
     area_name: sample.area_name ?? null,

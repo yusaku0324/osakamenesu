@@ -767,8 +767,17 @@ async def search_shops(
 
 
 @router.get("/{shop_id}")
-async def get_shop_detail(shop_id: UUID, db: AsyncSession = Depends(get_session)):
-    profile = await db.get(models.Profile, shop_id)
+async def get_shop_detail(shop_id: str, db: AsyncSession = Depends(get_session)):
+    profile = None
+    try:
+        profile_uuid = uuid.UUID(shop_id)
+    except ValueError:
+        profile = await db.scalar(select(models.Profile).where(models.Profile.slug == shop_id))
+        if not profile:
+            profile = await db.scalar(select(models.Profile).where(models.Profile.name == shop_id))
+    else:
+        profile = await db.get(models.Profile, profile_uuid)
+
     if not profile:
         raise HTTPException(status_code=404, detail="shop not found")
 
@@ -841,7 +850,7 @@ async def get_shop_detail(shop_id: UUID, db: AsyncSession = Depends(get_session)
 
     shop_summary = ShopDetail(
         id=profile.id,
-        slug=None,
+        slug=profile.slug,
         name=profile.name,
         area=profile.area,
         area_name=profile.area,
