@@ -19,6 +19,7 @@ from ..schemas import (
     AvailabilityCreate,
     AvailabilityUpsert,
     AvailabilitySlotIn,
+    AvailabilityCalendar,
     ShopContentUpdate,
     ShopAdminSummary,
     ShopAdminList,
@@ -37,7 +38,7 @@ from ..schemas import (
     BulkAvailabilityInput,
 )
 from zoneinfo import ZoneInfo
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import Optional, Any, List
 import uuid
 from ..deps import require_admin, audit_admin
@@ -455,6 +456,22 @@ def _prepare_contact_output(contact_json: dict[str, Any] | None) -> dict[str, An
     }
 
 
+async def _resolve_profile(db: AsyncSession, identifier: str) -> models.Profile | None:
+    """Resolve shop by UUID or slug."""
+    try:
+        profile_uuid = UUID(identifier)
+    except (ValueError, TypeError):
+        profile_uuid = None
+
+    if profile_uuid:
+        profile = await db.get(models.Profile, profile_uuid)
+        if profile:
+            return profile
+
+    result = await db.execute(select(models.Profile).where(models.Profile.slug == identifier))
+    return result.scalar_one_or_none()
+
+
 @router.get("/api/admin/shops/{shop_id}", summary="Get shop detail", response_model=ShopAdminDetail)
 async def admin_get_shop(shop_id: UUID, db: AsyncSession = Depends(get_session)):
     profile = await db.get(models.Profile, shop_id)
@@ -488,6 +505,38 @@ async def admin_get_shop(shop_id: UUID, db: AsyncSession = Depends(get_session))
         staff=staff_members,
         availability=availability,
     )
+
+
+@router.get(
+    "/api/admin/shops/{shop_id}/availability",
+    summary="Get availability calendar",
+    response_model=AvailabilityCalendar,
+)
+async def admin_get_shop_availability(
+    shop_id: str,
+    start_date: date | None = Query(default=None, description="Filter availability from this date (inclusive)"),
+    end_date: date | None = Query(default=None, description="Filter availability until this date (inclusive)"),
+    db: AsyncSession = Depends(get_session),
+):
+    profile = await _resolve_profile(db, shop_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="shop not found")
+
+    availability = await _fetch_availability(
+        db,
+        profile.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    if not availability:
+        return AvailabilityCalendar(
+            shop_id=profile.id,
+            generated_at=datetime.now(timezone.utc),
+            days=[],
+        )
+
+    return availability
 
 
 @router.patch("/api/admin/shops/{shop_id}/content", summary="Update shop content")
