@@ -103,7 +103,16 @@ async def search_profiles(q: str | None = None, area: str | None = None, station
 
 @router.get("/api/profiles/{profile_id}", summary="Get profile detail")
 async def get_profile_detail(profile_id: str, db: AsyncSession = Depends(get_session)):
-    res = await db.execute(select(models.Profile).where(models.Profile.id == profile_id))
+    query = select(models.Profile)
+    try:
+        # Try UUID lookup first
+        uuid.UUID(profile_id)
+        query = query.where(models.Profile.id == profile_id)
+    except ValueError:
+        # Fall back to name/slug-like search if UUID conversion fails
+        query = query.where(models.Profile.name == profile_id)
+
+    res = await db.execute(query)
     p = res.scalar_one_or_none()
     if not p:
         raise HTTPException(404, "profile not found")
