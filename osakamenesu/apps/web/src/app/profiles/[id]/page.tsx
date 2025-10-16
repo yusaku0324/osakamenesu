@@ -74,6 +74,7 @@ type DiaryEntry = {
 
 export type ShopDetail = {
   id: string
+  slug?: string | null
   name: string
   area: string
   area_name?: string | null

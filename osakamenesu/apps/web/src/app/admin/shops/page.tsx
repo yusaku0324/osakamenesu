@@ -51,6 +51,7 @@ type ContactInfo = {
 
 type ShopDetail = {
   id: string
+  slug?: string | null
   name: string
   area: string
   price_min: number
