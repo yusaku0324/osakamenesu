@@ -463,7 +463,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
                 {showTherapists ? 'セラピストを探す' : '大阪メンエスを探す'}
               </h1>
               <p className="max-w-2xl text-sm leading-relaxed text-neutral-textMuted">
-                CityHeaven の情報量と丁寧さをそのままに、メンエス選びに必要な情報を最短で届ける検索ページです。
+                最新の出勤情報や写メ日記、スタッフ紹介まで、メンエス選びに欲しい情報をワンストップで届けます。
                 {showTherapists
                   ? ' エリアや得意な施術から、あなたにぴったりのセラピストを見つけてください。'
                   : ' 気になるエリアや料金帯を組み合わせて、ぴったりの店舗を見つけましょう。'}
