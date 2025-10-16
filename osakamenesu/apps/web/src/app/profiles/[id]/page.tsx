@@ -108,7 +108,7 @@ async function fetchShop(id: string): Promise<ShopDetail> {
     try {
       const r = await fetch(buildApiUrl(base, endpoint), { cache: 'no-store' })
       if (r.ok) return (await r.json()) as ShopDetail
-      if (r.status === 404) notFound()
+      if (r.status === 404) continue
     } catch (error) {
       // try next base
     }
