@@ -43,6 +43,7 @@ from typing import Optional, Any, List
 import uuid
 from ..deps import require_admin, audit_admin
 from .shops import _fetch_availability, _normalize_menus, _normalize_staff, serialize_review
+from ..utils.slug import slugify
 
 router = APIRouter(dependencies=[Depends(require_admin), Depends(audit_admin)])
 JST = ZoneInfo("Asia/Tokyo")
@@ -435,6 +436,7 @@ async def admin_list_shops(db: AsyncSession = Depends(get_session)):
         ShopAdminSummary(
             id=p.id,
             name=p.name,
+            slug=p.slug,
             area=p.area,
             status=p.status,
             service_type=p.service_type,
@@ -491,6 +493,7 @@ async def admin_get_shop(shop_id: UUID, db: AsyncSession = Depends(get_session))
     return ShopAdminDetail(
         id=profile.id,
         name=profile.name,
+        slug=profile.slug,
         area=profile.area,
         price_min=profile.price_min,
         price_max=profile.price_max,
@@ -553,6 +556,37 @@ async def admin_update_shop_content(
     before_detail = await admin_get_shop(shop_id, db)
 
     contact_json = dict(profile.contact_json or {})
+
+    if payload.name is not None:
+        profile.name = payload.name.strip()
+
+    if payload.area is not None:
+        profile.area = payload.area.strip()
+
+    if payload.price_min is not None:
+        profile.price_min = max(0, int(payload.price_min))
+
+    if payload.price_max is not None:
+        profile.price_max = max(0, int(payload.price_max))
+
+    if payload.service_type is not None:
+        service_type = payload.service_type if payload.service_type in {'store', 'dispatch'} else 'store'
+        profile.service_type = service_type
+
+    if payload.slug is not None:
+        normalized = slugify(payload.slug)
+        conflict = None
+        if normalized:
+            res_slug = await db.execute(
+                select(models.Profile.id).where(
+                    models.Profile.slug == normalized,
+                    models.Profile.id != profile.id,
+                )
+            )
+            conflict = res_slug.scalar_one_or_none()
+        if conflict:
+            raise HTTPException(status_code=400, detail="slug already exists")
+        profile.slug = normalized or None
 
     if payload.contact is not None:
         contact_json["phone"] = payload.contact.phone

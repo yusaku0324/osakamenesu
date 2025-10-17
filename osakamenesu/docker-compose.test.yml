@@ -16,7 +16,7 @@ services:
   osakamenesu-meili-test:
     image: getmeili/meilisearch:v1.7
     environment:
-      MEILI_MASTER_KEY: dev_meili_master_key
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev_meili_master_key}
     command: ["meilisearch", "--http-addr", "0.0.0.0:7700"]
     ports:
       - "7700:7700"
@@ -29,7 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@osakamenesu-db-test:5432/osaka_menesu
       MEILI_HOST: http://osakamenesu-meili-test:7700
-      MEILI_MASTER_KEY: dev_meili_master_key
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev_meili_master_key}
       ADMIN_API_KEY: dev_admin_key
       PYTHONUNBUFFERED: 1
       PYTHONPATH: /app

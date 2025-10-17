@@ -13,6 +13,7 @@ from .routers.reservations import router as reservations_router
 from .routers.auth import router as auth_router
 from .routers.favorites import router as favorites_router
 from .routers.dashboard_notifications import router as dashboard_notifications_router
+from .routers.dashboard_shops import router as dashboard_shops_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .db import get_session
@@ -115,3 +116,4 @@ app.include_router(reservations_router)
 app.include_router(auth_router)
 app.include_router(favorites_router)
 app.include_router(dashboard_notifications_router)
+app.include_router(dashboard_shops_router)

@@ -34,6 +34,9 @@ docker push ghcr.io/$ORG/osakamenesu-web:staging
 | `ADMIN_API_KEY` | `dev_admin_key` など環境に合わせて | `/api/admin/*` プロキシで利用 |
 | `NEXT_PUBLIC_API_BASE` | `/api` or `https://stg-api.example.com` | Web フロントが叩く API URL |
 | `API_INTERNAL_BASE` | `http://osakamenesu-api:8000` | docker compose 内部通信 |
+| `MEILI_MASTER_KEY` | `dev_meili_master_key` など環境に合わせて | Meilisearch API キー |
+| `MEILI_HOST` | `https://stg-meili.example.com` など | API/CI から参照する Meilisearch エンドポイント |
+| `CLOUD_RUN_MEILI_SERVICE` | `osakamenesu-meili` など Cloud Run サービス名 | CI から Cloud Run Meilisearch をデプロイする際に使用 |
 | `NOTIFY_SMTP_HOST` ほか通知系 | SMTP / Slack / LINE 情報 | 通知送信 |
 
 `.env.staging` の例:

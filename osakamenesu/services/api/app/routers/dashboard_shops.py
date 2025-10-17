@@ -1,0 +1,362 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .. import models
+from ..db import get_session
+from ..deps import require_user
+from ..meili import index_profile
+from ..schemas import (
+    DashboardShopContact,
+    DashboardShopMenu,
+    DashboardShopProfileResponse,
+    DashboardShopProfileUpdatePayload,
+    DashboardShopStaff,
+)
+from ..utils.profiles import build_profile_doc
+from ..utils.slug import slugify
+
+JST = ZoneInfo("Asia/Tokyo")
+
+router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+def _ensure_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _extract_contact(contact_json: Dict[str, Any] | None) -> Optional[DashboardShopContact]:
+    if not isinstance(contact_json, dict):
+        return None
+    phone = contact_json.get("phone") or contact_json.get("tel")
+    line_id = contact_json.get("line_id") or contact_json.get("line")
+    website_url = contact_json.get("website_url") or contact_json.get("web")
+    reservation_form_url = contact_json.get("reservation_form_url")
+    if not any([phone, line_id, website_url, reservation_form_url]):
+        return None
+    return DashboardShopContact(
+        phone=phone,
+        line_id=line_id,
+        website_url=website_url,
+        reservation_form_url=reservation_form_url,
+    )
+
+
+def _extract_menus(raw: Any) -> List[DashboardShopMenu]:
+    if not isinstance(raw, list):
+        return []
+    items: List[DashboardShopMenu] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        try:
+            price = int(entry.get("price") or 0)
+        except Exception:
+            price = 0
+        try:
+            duration = entry.get("duration_minutes")
+            duration_value = int(duration) if duration is not None else None
+        except Exception:
+            duration_value = None
+        tags = []
+        raw_tags = entry.get("tags") or []
+        if isinstance(raw_tags, list):
+            tags = [str(tag) for tag in raw_tags if str(tag).strip()]
+        items.append(
+            DashboardShopMenu(
+                id=str(entry.get("id")) if entry.get("id") else None,
+                name=name,
+                price=max(0, price),
+                duration_minutes=duration_value,
+                description=str(entry.get("description") or "").strip() or None,
+                tags=tags,
+                is_reservable_online=entry.get("is_reservable_online", True),
+            )
+        )
+    return items
+
+
+def _extract_staff(raw: Any) -> List[DashboardShopStaff]:
+    if not isinstance(raw, list):
+        return []
+    members: List[DashboardShopStaff] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        specialties = []
+        raw_specialties = entry.get("specialties") or []
+        if isinstance(raw_specialties, list):
+            specialties = [str(item) for item in raw_specialties if str(item).strip()]
+        members.append(
+            DashboardShopStaff(
+                id=str(entry.get("id")) if entry.get("id") else None,
+                name=name,
+                alias=str(entry.get("alias") or "").strip() or None,
+                headline=str(entry.get("headline") or "").strip() or None,
+                specialties=specialties,
+            )
+        )
+    return members
+
+
+def _serialize_profile(profile: models.Profile) -> DashboardShopProfileResponse:
+    contact_json = profile.contact_json or {}
+    contact = _extract_contact(contact_json)
+    menus = _extract_menus(contact_json.get("menus"))
+    staff = _extract_staff(contact_json.get("staff"))
+    service_tags = contact_json.get("service_tags") or profile.body_tags or []
+    photos = [str(url) for url in (profile.photos or [])]
+
+    return DashboardShopProfileResponse(
+        id=profile.id,
+        slug=profile.slug,
+        name=profile.name,
+        area=profile.area,
+        price_min=profile.price_min,
+        price_max=profile.price_max,
+        service_type=profile.service_type,
+        service_tags=[str(tag) for tag in service_tags],
+        description=contact_json.get("description"),
+        catch_copy=contact_json.get("catch_copy"),
+        address=contact_json.get("address"),
+        photos=photos,
+        contact=contact,
+        menus=menus,
+        staff=staff,
+        updated_at=profile.updated_at,
+        status=profile.status,
+    )
+
+
+async def _get_profile(db: AsyncSession, profile_id: UUID) -> models.Profile:
+    profile = await db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found")
+    return profile
+
+
+async def _reindex_profile(db: AsyncSession, profile: models.Profile) -> None:
+    today = datetime.now(JST).date()
+    availability_count = await db.execute(
+        select(func.count())
+        .select_from(models.Availability)
+        .where(models.Availability.profile_id == profile.id, models.Availability.date == today)
+    )
+    has_today = (availability_count.scalar_one() or 0) > 0
+    outlinks_result = await db.execute(select(models.Outlink).where(models.Outlink.profile_id == profile.id))
+    outlinks = list(outlinks_result.scalars().all())
+    doc = build_profile_doc(profile, today=has_today, tag_score=0.0, ctr7d=0.0, outlinks=outlinks)
+    try:
+        index_profile(doc)
+    except Exception:
+        # Meili の一時的な失敗で編集を失敗扱いにしない
+        pass
+
+
+def _update_contact_json(
+    contact_json: Dict[str, Any],
+    contact: Optional[DashboardShopContact],
+) -> None:
+    if contact is None:
+        # 空指定の場合は既存のキーをクリア
+        for key in ["phone", "tel", "line_id", "line", "website_url", "web", "reservation_form_url"]:
+            contact_json.pop(key, None)
+        return
+
+    if contact.phone is not None:
+        if contact.phone:
+            contact_json["phone"] = contact.phone
+            contact_json["tel"] = contact.phone
+        else:
+            contact_json.pop("phone", None)
+            contact_json.pop("tel", None)
+    if contact.line_id is not None:
+        if contact.line_id:
+            contact_json["line_id"] = contact.line_id
+            contact_json["line"] = contact.line_id
+        else:
+            contact_json.pop("line_id", None)
+            contact_json.pop("line", None)
+    if contact.website_url is not None:
+        if contact.website_url:
+            contact_json["website_url"] = contact.website_url
+            contact_json["web"] = contact.website_url
+        else:
+            contact_json.pop("website_url", None)
+            contact_json.pop("web", None)
+    if contact.reservation_form_url is not None:
+        if contact.reservation_form_url:
+            contact_json["reservation_form_url"] = contact.reservation_form_url
+        else:
+            contact_json.pop("reservation_form_url", None)
+
+
+def _menus_to_contact_json(items: List[DashboardShopMenu]) -> List[Dict[str, Any]]:
+    payload: List[Dict[str, Any]] = []
+    for item in items:
+        name = item.name.strip()
+        if not name:
+            continue
+        try:
+            price = int(item.price)
+        except Exception:
+            price = 0
+        try:
+            duration = int(item.duration_minutes) if item.duration_minutes is not None else None
+        except Exception:
+            duration = None
+        tags = [tag.strip() for tag in (item.tags or []) if tag.strip()]
+        payload.append(
+            {
+                "id": item.id or str(uuid.uuid4()),
+                "name": name,
+                "price": max(0, price),
+                "duration_minutes": duration,
+                "description": item.description,
+                "tags": tags,
+                "is_reservable_online": item.is_reservable_online,
+            }
+        )
+    return payload
+
+
+def _staff_to_contact_json(items: List[DashboardShopStaff]) -> List[Dict[str, Any]]:
+    payload: List[Dict[str, Any]] = []
+    for member in items:
+        name = member.name.strip()
+        if not name:
+            continue
+        specialties = [tag.strip() for tag in (member.specialties or []) if tag.strip()]
+        payload.append(
+            {
+                "id": member.id or str(uuid.uuid4()),
+                "name": name,
+                "alias": member.alias or None,
+                "headline": member.headline or None,
+                "specialties": specialties,
+            }
+        )
+    return payload
+
+
+@router.get("/shops/{profile_id}/profile", response_model=DashboardShopProfileResponse)
+async def get_dashboard_shop_profile(
+    profile_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    user: models.User = Depends(require_user),
+) -> DashboardShopProfileResponse:
+    _ = user
+    profile = await _get_profile(db, profile_id)
+    return _serialize_profile(profile)
+
+
+@router.put("/shops/{profile_id}/profile", response_model=DashboardShopProfileResponse)
+async def update_dashboard_shop_profile(
+    profile_id: UUID,
+    payload: DashboardShopProfileUpdatePayload,
+    db: AsyncSession = Depends(get_session),
+    user: models.User = Depends(require_user),
+) -> DashboardShopProfileResponse:
+    _ = user
+    profile = await _get_profile(db, profile_id)
+
+    current_updated_at = _ensure_datetime(profile.updated_at)
+    incoming_updated_at = _ensure_datetime(payload.updated_at)
+    if incoming_updated_at != current_updated_at:
+        current = _serialize_profile(profile)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"current": current.model_dump()},
+        )
+
+    if payload.name is not None:
+        normalized = payload.name.strip()
+        if normalized:
+            profile.name = normalized
+
+    if payload.area is not None:
+        normalized = payload.area.strip()
+        if normalized:
+            profile.area = normalized
+
+    if payload.price_min is not None:
+        profile.price_min = max(0, int(payload.price_min))
+
+    if payload.price_max is not None:
+        profile.price_max = max(0, int(payload.price_max))
+
+    if payload.service_type is not None:
+        profile.service_type = payload.service_type if payload.service_type in {"store", "dispatch"} else "store"
+
+    if payload.slug is not None:
+        candidate = slugify(payload.slug) if payload.slug else None
+        if candidate:
+            conflict = await db.execute(
+                select(models.Profile.id).where(models.Profile.slug == candidate, models.Profile.id != profile.id)
+            )
+            if conflict.scalar_one_or_none():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="slug_already_exists")
+            profile.slug = candidate
+        else:
+            profile.slug = None
+
+    contact_json = dict(profile.contact_json or {})
+
+    if payload.contact is not None:
+        _update_contact_json(contact_json, payload.contact)
+
+    if payload.description is not None:
+        if payload.description:
+            contact_json["description"] = payload.description
+        else:
+            contact_json.pop("description", None)
+
+    if payload.catch_copy is not None:
+        if payload.catch_copy:
+            contact_json["catch_copy"] = payload.catch_copy
+        else:
+            contact_json.pop("catch_copy", None)
+
+    if payload.address is not None:
+        if payload.address:
+            contact_json["address"] = payload.address
+        else:
+            contact_json.pop("address", None)
+
+    if payload.photos is not None:
+        profile.photos = [photo for photo in payload.photos if photo]
+
+    if payload.menus is not None:
+        contact_json["menus"] = _menus_to_contact_json(payload.menus)
+
+    if payload.staff is not None:
+        contact_json["staff"] = _staff_to_contact_json(payload.staff)
+
+    if payload.service_tags is not None:
+        tags = [tag.strip() for tag in payload.service_tags if tag.strip()]
+        contact_json["service_tags"] = tags
+        profile.body_tags = tags
+
+    profile.contact_json = contact_json
+
+    await db.commit()
+    await db.refresh(profile)
+    await _reindex_profile(db, profile)
+
+    return _serialize_profile(profile)
