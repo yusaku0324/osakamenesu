@@ -172,7 +172,7 @@ jobs:
           gcloud run deploy "$CLOUD_RUN_MEILI_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
             --image "docker.io/getmeili/meilisearch:v1.7" \
-            --set-env-vars "MEILI_MASTER_KEY=${MEILI_MASTER_KEY}" \
+            --set-env-vars "MEILI_MASTER_KEY=${MEILI_MASTER_KEY},MEILI_HTTP_ADDR=0.0.0.0:8080,MEILI_ENV=production,MEILI_NO_ANALYTICS=true" \
             --memory "1Gi" \
             --cpu "1" \
             --platform managed \

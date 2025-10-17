@@ -36,7 +36,8 @@ docker push ghcr.io/$ORG/osakamenesu-web:staging
 | `API_INTERNAL_BASE` | `http://osakamenesu-api:8000` | docker compose 内部通信 |
 | `MEILI_MASTER_KEY` | `dev_meili_master_key` など環境に合わせて | Meilisearch API キー |
 | `MEILI_HOST` | `https://stg-meili.example.com` など | API/CI から参照する Meilisearch エンドポイント |
-| `CLOUD_RUN_MEILI_SERVICE` | `osakamenesu-meili` など Cloud Run サービス名 | CI から Cloud Run Meilisearch をデプロイする際に使用 |
+| `CLOUD_RUN_MEILI_SERVICE` | `osakamenesu-meili` など Cloud Run サービス名 | CI から Cloud Run Meilisearch をデプロイ |
+| `MEILI_HTTP_ADDR` | `0.0.0.0:8080` | Cloud Run 上でのリッスンポート（CI が自動設定） |
 | `NOTIFY_SMTP_HOST` ほか通知系 | SMTP / Slack / LINE 情報 | 通知送信 |
 
 `.env.staging` の例:
