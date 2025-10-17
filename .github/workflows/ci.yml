@@ -19,6 +19,13 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.7
+        env:
+          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
+        ports:
+          - 7700:7700
     defaults:
       run:
         working-directory: osakamenesu/services/api
@@ -32,7 +39,24 @@ jobs:
       - name: Install deps
         run: pip install -q -r requirements-test.txt
 
+      - name: Wait for Meilisearch
+        env:
+          MEILI_HOST: http://127.0.0.1:7700
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$MEILI_HOST/health" >/dev/null; then
+              echo "Meilisearch is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Meilisearch did not become ready in time" >&2
+          exit 1
+
       - name: Run pytest
+        env:
+          MEILI_HOST: http://127.0.0.1:7700
+          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
         run: pytest app/tests -q
 
   integration-test:
@@ -48,6 +72,7 @@ jobs:
       - name: Run docker-compose integration tests
         env:
           DOCKER_BUILDKIT: 1
+          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
         run: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from osakamenesu-api-test osakamenesu-api-test
 
       - name: Teardown integration stack
@@ -113,6 +138,8 @@ jobs:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       CLOUD_RUN_API_SERVICE: ${{ secrets.CLOUD_RUN_API_SERVICE }}
       CLOUD_RUN_REGION: ${{ secrets.CLOUD_RUN_REGION }}
+      CLOUD_RUN_MEILI_SERVICE: ${{ secrets.CLOUD_RUN_MEILI_SERVICE }}
+      MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
     permissions:
       contents: read
       id-token: write
@@ -130,6 +157,36 @@ jobs:
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker --quiet
+
+      - name: Deploy Meilisearch to Cloud Run
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUD_RUN_MEILI_SERVICE}" ]; then
+            echo "::error::CLOUD_RUN_MEILI_SERVICE secret is not set." >&2
+            exit 1
+          fi
+          if [ -z "${MEILI_MASTER_KEY}" ]; then
+            echo "::error::MEILI_MASTER_KEY secret is not set." >&2
+            exit 1
+          fi
+          gcloud run deploy "$CLOUD_RUN_MEILI_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --image "docker.io/getmeili/meilisearch:v1.7" \
+            --set-env-vars "MEILI_MASTER_KEY=${MEILI_MASTER_KEY}" \
+            --memory "1Gi" \
+            --cpu "1" \
+            --platform managed \
+            --allow-unauthenticated \
+            --quiet
+          MEILI_URL=$(gcloud run services describe "$CLOUD_RUN_MEILI_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --format='value(status.url)')
+          if [ -z "$MEILI_URL" ]; then
+            echo "::error::Unable to resolve Meilisearch service URL." >&2
+            exit 1
+          fi
+          echo "::add-mask::${MEILI_URL}"
+          echo "MEILI_URL=${MEILI_URL}" >> "$GITHUB_ENV"
 
       - name: Build and push API image
         env:
@@ -191,15 +248,25 @@ jobs:
         env:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           DATABASE_URL: ${{ steps.resolve-db-url.outputs.database_url }}
-          MEILI_HOST: ${{ secrets.MEILI_HOST }}
           MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
+          MEILI_HOST_FALLBACK: ${{ secrets.MEILI_HOST }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
+          set -euo pipefail
+          MEILI_HOST_EFFECTIVE="${MEILI_URL:-}"
+          if [ -z "$MEILI_HOST_EFFECTIVE" ]; then
+            MEILI_HOST_EFFECTIVE="${MEILI_HOST_FALLBACK}"
+          fi
+          if [ -z "$MEILI_HOST_EFFECTIVE" ]; then
+            echo "::error::Meilisearch host is not configured. Set CLOUD_RUN_MEILI_SERVICE or secrets.MEILI_HOST." >&2
+            exit 1
+          fi
+          echo "::add-mask::${MEILI_HOST_EFFECTIVE}"
           gcloud run services update "$CLOUD_RUN_API_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
             --add-cloudsql-instances "${GCP_PROJECT_ID}:${CLOUD_RUN_REGION}:osakamenesu-pg" \
             --image "$IMAGE" \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL},MEILI_HOST=${MEILI_HOST},MEILI_MASTER_KEY=${MEILI_MASTER_KEY},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
+            --update-env-vars "DATABASE_URL=${DATABASE_URL},MEILI_HOST=${MEILI_HOST_EFFECTIVE},MEILI_MASTER_KEY=${MEILI_MASTER_KEY},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
 
       - name: Deploy osakamenesu-web to Cloud Run
         env:

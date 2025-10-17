@@ -486,6 +486,12 @@ class ShopContactUpdate(BaseModel):
 
 
 class ShopContentUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    area: Optional[str] = None
+    price_min: Optional[int] = None
+    price_max: Optional[int] = None
+    service_type: Optional[str] = None
     service_tags: Optional[List[str]] = None
     menus: Optional[List[MenuInput]] = None
     staff: Optional[List[StaffInput]] = None
@@ -562,6 +568,7 @@ class BulkShopContentResponse(BaseModel):
 class ShopAdminSummary(BaseModel):
     id: UUID
     name: str
+    slug: Optional[str] = None
     area: str
     status: str
     service_type: str
@@ -574,6 +581,7 @@ class ShopAdminList(BaseModel):
 class ShopAdminDetail(BaseModel):
     id: UUID
     name: str
+    slug: Optional[str] = None
     area: str
     price_min: int
     price_max: int
@@ -628,3 +636,66 @@ class DashboardNotificationSettingsUpdatePayload(BaseModel):
 class DashboardNotificationSettingsTestPayload(BaseModel):
     trigger_status: List[DashboardNotificationStatus]
     channels: DashboardNotificationChannels
+
+
+class DashboardShopContact(BaseModel):
+    phone: Optional[str] = None
+    line_id: Optional[str] = None
+    website_url: Optional[str] = None
+    reservation_form_url: Optional[str] = None
+
+
+class DashboardShopMenu(BaseModel):
+    id: Optional[str] = None
+    name: str
+    price: int
+    duration_minutes: Optional[int] = None
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    is_reservable_online: Optional[bool] = True
+
+
+class DashboardShopStaff(BaseModel):
+    id: Optional[str] = None
+    name: str
+    alias: Optional[str] = None
+    headline: Optional[str] = None
+    specialties: List[str] = Field(default_factory=list)
+
+
+class DashboardShopProfileResponse(BaseModel):
+    id: UUID
+    slug: Optional[str] = None
+    name: str
+    area: str
+    price_min: int
+    price_max: int
+    service_type: str
+    service_tags: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+    catch_copy: Optional[str] = None
+    address: Optional[str] = None
+    photos: List[str] = Field(default_factory=list)
+    contact: Optional[DashboardShopContact] = None
+    menus: List[DashboardShopMenu] = Field(default_factory=list)
+    staff: List[DashboardShopStaff] = Field(default_factory=list)
+    updated_at: datetime
+    status: Optional[str] = None
+
+
+class DashboardShopProfileUpdatePayload(BaseModel):
+    updated_at: datetime
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    area: Optional[str] = None
+    price_min: Optional[int] = None
+    price_max: Optional[int] = None
+    service_type: Optional[str] = None
+    service_tags: Optional[List[str]] = None
+    description: Optional[str] = None
+    catch_copy: Optional[str] = None
+    address: Optional[str] = None
+    photos: Optional[List[str]] = None
+    contact: Optional[DashboardShopContact] = None
+    menus: Optional[List[DashboardShopMenu]] = None
+    staff: Optional[List[DashboardShopStaff]] = None

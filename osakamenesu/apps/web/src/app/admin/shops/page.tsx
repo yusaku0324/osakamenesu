@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useToast, ToastContainer } from '@/components/useToast'
 import { Card } from '@/components/ui/Card'
 
@@ -9,6 +9,7 @@ const EMPTY_PHONE = ''
 type ShopSummary = {
   id: string
   name: string
+  slug?: string | null
   area: string
   status: string
   service_type: string
@@ -111,9 +112,13 @@ function emptySlot(): AvailabilitySlot {
   }
 }
 
+const SERVICE_TYPES = ['store', 'dispatch'] as const
+type ServiceType = typeof SERVICE_TYPES[number]
+
 export default function AdminShopsPage() {
   const [shops, setShops] = useState<ShopSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState<boolean>(false)
   const [detail, setDetail] = useState<ShopDetail | null>(null)
   const [menus, setMenus] = useState<MenuItem[]>([])
   const [staff, setStaff] = useState<StaffItem[]>([])
@@ -125,6 +130,12 @@ export default function AdminShopsPage() {
   const [catchCopy, setCatchCopy] = useState<string>('')
   const [address, setAddress] = useState<string>('')
   const [photoUrls, setPhotoUrls] = useState<string[]>([''])
+  const [name, setName] = useState<string>('')
+  const [slugValue, setSlugValue] = useState<string>('')
+  const [areaValue, setAreaValue] = useState<string>('')
+  const [priceMin, setPriceMin] = useState<number>(0)
+  const [priceMax, setPriceMax] = useState<number>(0)
+  const [serviceType, setServiceType] = useState<ServiceType>('store')
   const { toasts, push, remove } = useToast()
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false)
 
@@ -148,77 +159,130 @@ export default function AdminShopsPage() {
     }
   }
 
-  useEffect(() => {
-    async function loadShops() {
-      try {
-        const resp = await fetch('/api/admin/shops', { cache: 'no-store' })
-        if (!resp.ok) throw new Error('failed to load shops')
-        const json = await resp.json()
-        setShops(json.items || [])
-        if (json.items && json.items.length > 0) {
-          setSelectedId(json.items[0].id)
-        }
-      } catch (err) {
-        console.error(err)
-        push('error', '店舗一覧の取得に失敗しました')
+  async function fetchShops(selectFirst: boolean = true) {
+    try {
+      const resp = await fetch('/api/admin/shops', { cache: 'no-store' })
+      if (!resp.ok) throw new Error('failed to load shops')
+      const json = await resp.json()
+      const items: ShopSummary[] = json.items || []
+      setShops(items)
+      if (selectFirst && items.length > 0 && !isCreating) {
+        setSelectedId(items[0].id)
       }
+    } catch (err) {
+      console.error(err)
+      push('error', '店舗一覧の取得に失敗しました')
     }
-    loadShops()
+  }
+
+  useEffect(() => {
+    fetchShops()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    async function loadDetail(id: string) {
-      setLoadingDetail(true)
-      try {
-        const resp = await fetch(`/api/admin/shops/${id}`, { cache: 'no-store' })
-        if (!resp.ok) throw new Error('failed to load detail')
-        const json = await resp.json()
-        setDetail(json)
-        setMenus((json.menus || []).map((m: MenuItem) => ({
-          ...m,
-          tags: (m.tags || []),
+  const fetchDetail = useCallback(async (id: string) => {
+    setLoadingDetail(true)
+    try {
+      const resp = await fetch(`/api/admin/shops/${id}`, { cache: 'no-store' })
+      if (!resp.ok) throw new Error('failed to load detail')
+      const json = await resp.json()
+      setDetail(json)
+      setName(json.name || '')
+      setSlugValue(json.slug || '')
+      setAreaValue(json.area || '')
+      setPriceMin(json.price_min ?? 0)
+      setPriceMax(json.price_max ?? 0)
+      setServiceType((json.service_type as ServiceType) || 'store')
+      setIsCreating(false)
+      setMenus((json.menus || []).map((m: MenuItem) => ({
+        ...m,
+        tags: (m.tags || []),
+      })))
+      setStaff((json.staff || []).map((s: StaffItem) => ({
+        ...s,
+        specialties: (s.specialties || []),
+      })))
+      setServiceTags(json.service_tags || [])
+      setContact({
+        phone: json.contact?.phone || EMPTY_PHONE,
+        line_id: json.contact?.line_id || '',
+        website_url: json.contact?.website_url || '',
+        reservation_form_url: json.contact?.reservation_form_url || '',
+      })
+      if (json.availability && json.availability.length > 0) {
+        setAvailability((json.availability || []).map((day: AvailabilityDay) => ({
+          date: day.date,
+          slots: (day.slots || []).map(slot => ({
+            start_at: toLocalIso(slot.start_at),
+            end_at: toLocalIso(slot.end_at),
+            status: slot.status,
+          })),
         })))
-        setStaff((json.staff || []).map((s: StaffItem) => ({
-          ...s,
-          specialties: (s.specialties || []),
-        })))
-        setServiceTags(json.service_tags || [])
-        setContact({
-          phone: json.contact?.phone || EMPTY_PHONE,
-          line_id: json.contact?.line_id || '',
-          website_url: json.contact?.website_url || '',
-          reservation_form_url: json.contact?.reservation_form_url || '',
-        })
-        if (json.availability && json.availability.length > 0) {
-          setAvailability((json.availability || []).map((day: AvailabilityDay) => ({
-            date: day.date,
-            slots: (day.slots || []).map(slot => ({
-              start_at: toLocalIso(slot.start_at),
-              end_at: toLocalIso(slot.end_at),
-              status: slot.status,
-            })),
-          })))
-        } else {
-          setAvailability([])
-        }
-        setDescription(json.description || '')
-        setCatchCopy(json.catch_copy || '')
-        setAddress(json.address || '')
-        const photos: string[] = json.photos && json.photos.length > 0 ? json.photos : ['']
-        setPhotoUrls(photos)
-      } catch (err) {
-        console.error(err)
-        push('error', '店舗詳細の取得に失敗しました')
-      } finally {
-        setLoadingDetail(false)
+      } else {
+        setAvailability([])
       }
+      setDescription(json.description || '')
+      setCatchCopy(json.catch_copy || '')
+      setAddress(json.address || '')
+      const photos: string[] = json.photos && json.photos.length > 0 ? json.photos : ['']
+      setPhotoUrls(photos)
+    } catch (err) {
+      console.error(err)
+      push('error', '店舗詳細の取得に失敗しました')
+    } finally {
+      setLoadingDetail(false)
     }
+  }, [push])
+
+  useEffect(() => {
     if (selectedId) {
-      loadDetail(selectedId)
+      fetchDetail(selectedId)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId])
+  }, [selectedId, fetchDetail])
+
+  function selectShop(id: string) {
+    setIsCreating(false)
+    setSelectedId(id)
+  }
+
+  function startCreate() {
+    setIsCreating(true)
+    setSelectedId(null)
+    const blankDetail: ShopDetail = {
+      id: '',
+      name: '',
+      slug: '',
+      area: '',
+      price_min: 0,
+      price_max: 0,
+      service_type: 'store',
+      service_tags: [],
+      contact: null,
+      description: '',
+      catch_copy: '',
+      address: '',
+      photos: [],
+      menus: [],
+      staff: [],
+      availability: [],
+    }
+    setDetail(blankDetail)
+    setName('')
+    setSlugValue('')
+    setAreaValue('')
+    setPriceMin(0)
+    setPriceMax(0)
+    setServiceType('store')
+    setServiceTags([])
+    setContact({})
+    setMenus([emptyMenu()])
+    setStaff([emptyStaff()])
+    setAvailability([])
+    setDescription('')
+    setCatchCopy('')
+    setAddress('')
+    setPhotoUrls([''])
+  }
 
   function updateMenu(index: number, key: keyof MenuItem, value: any) {
     setMenus(prev => {
@@ -311,45 +375,154 @@ export default function AdminShopsPage() {
     })
   }
 
+  function buildUpdatePayload() {
+    const normalizedMenus = menus
+      .filter(menu => menu.name?.trim())
+      .map(menu => ({
+        ...menu,
+        name: menu.name.trim(),
+        price: Number(menu.price) || 0,
+        duration_minutes: menu.duration_minutes ? Number(menu.duration_minutes) : undefined,
+        description: menu.description || undefined,
+        tags: (menu.tags || []).map(tag => tag.trim()).filter(Boolean),
+      }))
+
+    const normalizedStaff = staff
+      .filter(member => member.name?.trim())
+      .map(member => ({
+        ...member,
+        name: member.name.trim(),
+        alias: member.alias || undefined,
+        headline: member.headline || undefined,
+        specialties: (member.specialties || []).map(tag => tag.trim()).filter(Boolean),
+      }))
+
+    const contactPayload: ContactInfo = {
+      phone: contact.phone && contact.phone !== EMPTY_PHONE ? contact.phone : undefined,
+      line_id: contact.line_id || undefined,
+      website_url: contact.website_url || undefined,
+      reservation_form_url: contact.reservation_form_url || undefined,
+    }
+
+    return {
+      name: name.trim(),
+      slug: slugValue.trim() || undefined,
+      area: areaValue.trim(),
+      price_min: Number(priceMin) || 0,
+      price_max: Number(priceMax) || 0,
+      service_type: serviceType,
+      service_tags: serviceTags,
+      menus: normalizedMenus,
+      staff: normalizedStaff,
+      contact: contactPayload,
+      description: description || undefined,
+      catch_copy: catchCopy || undefined,
+      address: address || undefined,
+      photos: photoUrls.map(url => url.trim()).filter(Boolean),
+    }
+  }
+
+  function buildCreatePayload(updatePayload: ReturnType<typeof buildUpdatePayload>) {
+    const contactJson: Record<string, any> = {}
+    if (updatePayload.contact?.phone) contactJson.phone = updatePayload.contact.phone
+    if (updatePayload.contact?.phone) contactJson.tel = updatePayload.contact.phone
+    if (updatePayload.contact?.line_id) {
+      contactJson.line_id = updatePayload.contact.line_id
+      contactJson.line = updatePayload.contact.line_id
+    }
+    if (updatePayload.contact?.website_url) {
+      contactJson.website_url = updatePayload.contact.website_url
+      contactJson.web = updatePayload.contact.website_url
+    }
+    if (updatePayload.contact?.reservation_form_url) {
+      contactJson.reservation_form_url = updatePayload.contact.reservation_form_url
+    }
+    if (updatePayload.service_tags) {
+      contactJson.service_tags = updatePayload.service_tags
+    }
+    if (updatePayload.description) contactJson.description = updatePayload.description
+    if (updatePayload.catch_copy) contactJson.catch_copy = updatePayload.catch_copy
+    if (updatePayload.address) contactJson.address = updatePayload.address
+    if (updatePayload.menus?.length) contactJson.menus = updatePayload.menus
+    if (updatePayload.staff?.length) contactJson.staff = updatePayload.staff
+
+    return {
+      name: updatePayload.name,
+      slug: updatePayload.slug,
+      area: updatePayload.area,
+      price_min: updatePayload.price_min,
+      price_max: updatePayload.price_max,
+      bust_tag: 'C',
+      service_type: updatePayload.service_type,
+      body_tags: updatePayload.service_tags,
+      photos: updatePayload.photos,
+      contact_json: contactJson,
+      status: 'published',
+    }
+  }
+
   async function saveContent() {
-    if (!selectedId) return
+    const updatePayload = buildUpdatePayload()
+    if (!updatePayload.name) {
+      push('error', '店舗名を入力してください')
+      return
+    }
+    if (!updatePayload.slug) {
+      push('error', 'スラッグを入力してください')
+      return
+    }
+
     try {
-      const payload = {
-        service_tags: serviceTags,
-        menus: menus.map(menu => ({
-          ...menu,
-          price: Number(menu.price) || 0,
-          duration_minutes: menu.duration_minutes ? Number(menu.duration_minutes) : undefined,
-          tags: (menu.tags || []).filter(Boolean),
-        })),
-        staff: staff.map(member => ({
-          ...member,
-          specialties: (member.specialties || []).filter(Boolean),
-        })),
-        contact: {
-          phone: contact.phone || undefined,
-          line_id: contact.line_id || undefined,
-          website_url: contact.website_url || undefined,
-          reservation_form_url: contact.reservation_form_url || undefined,
-        },
-        description: description || undefined,
-        catch_copy: catchCopy || undefined,
-        address: address || undefined,
-        photos: photoUrls.map(url => url.trim()).filter(Boolean),
+      if (isCreating) {
+        const createPayload = buildCreatePayload(updatePayload)
+        const createResp = await fetch('/api/admin/shops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(createPayload),
+        })
+      if (!createResp.ok) {
+        const detailResp = await createResp.json().catch(() => ({}))
+        push('error', detailResp?.detail || '店舗の作成に失敗しました')
+        return
       }
+      const createJson = await createResp.json()
+      const newId = createJson.id || createJson?.detail?.id
+      if (!newId) {
+        push('error', '店舗IDを取得できませんでした')
+        return
+      }
+
+      const patchResp = await fetch(`/api/admin/shops/${newId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+      })
+      if (!patchResp.ok) {
+        const patchDetail = await patchResp.json().catch(() => ({}))
+        push('error', patchDetail?.detail || '店舗情報の更新に失敗しました')
+        return
+      }
+        setIsCreating(false)
+        setSelectedId(newId)
+        await fetchShops(false)
+        push('success', '店舗を作成しました')
+        return
+      }
+
+      if (!selectedId) return
+
       const resp = await fetch(`/api/admin/shops/${selectedId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(updatePayload),
       })
       if (!resp.ok) {
         const detailResp = await resp.json().catch(() => ({}))
         push('error', detailResp?.detail || '保存に失敗しました')
         return
       }
-      const json = await resp.json()
-      setDetail(json)
-      setPhotoUrls(json.photos && json.photos.length > 0 ? json.photos : [''])
+      await fetchDetail(selectedId)
+      await fetchShops(false)
       push('success', '店舗情報を保存しました')
     } catch (err) {
       console.error(err)
@@ -399,7 +572,7 @@ export default function AdminShopsPage() {
     await saveAvailability(target.date, [])
   }
 
-  if (!detail || !selectedId) {
+  if (!detail || (!selectedId && !isCreating)) {
     return (
       <main className="max-w-5xl mx-auto p-4 space-y-4">
         <h1 className="text-2xl font-semibold">店舗管理</h1>
@@ -413,13 +586,22 @@ export default function AdminShopsPage() {
     <main className="max-w-6xl mx-auto p-4 space-y-6">
       <div className="flex flex-wrap items-start gap-4">
         <aside className="w-full md:w-64 border rounded-lg bg-white shadow-sm">
-          <div className="border-b px-3 py-2 text-sm font-semibold">店舗一覧</div>
+          <div className="flex items-center justify-between border-b px-3 py-2 text-sm font-semibold">
+            <span>店舗一覧</span>
+            <button
+              type="button"
+              onClick={startCreate}
+              className="rounded border border-blue-600 px-2 py-0.5 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+            >
+              新規
+            </button>
+          </div>
           <ul className="max-h-[60vh] overflow-y-auto">
             {shops.map(shop => (
               <li key={shop.id}>
                 <button
-                  onClick={() => setSelectedId(shop.id)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 ${shop.id === selectedId ? 'bg-blue-50 font-semibold' : ''}`}
+                  onClick={() => selectShop(shop.id)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 ${shop.id === selectedId && !isCreating ? 'bg-blue-50 font-semibold' : ''}`}
                 >
                   <div>{shop.name}</div>
                   <div className="text-xs text-slate-500">{shop.area} / {shop.status}</div>
@@ -430,9 +612,72 @@ export default function AdminShopsPage() {
         </aside>
 
         <section className="flex-1 space-y-6">
-          <header className="space-y-1">
-            <h1 className="text-2xl font-semibold">{detail.name}</h1>
-            <p className="text-sm text-slate-600">{detail.area} / {detail.service_type} / ¥{detail.price_min.toLocaleString()}〜¥{detail.price_max.toLocaleString()}</p>
+          <header className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">店舗名 *</label>
+                <input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="例: アロマリゾート 難波本店"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-lg font-semibold text-slate-900"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">スラッグ *</label>
+                <input
+                  value={slugValue}
+                  onChange={e => setSlugValue(e.target.value)}
+                  placeholder="例: aroma-namba"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">エリア</label>
+                <input
+                  value={areaValue}
+                  onChange={e => setAreaValue(e.target.value)}
+                  placeholder="例: 難波/日本橋"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">サービス種別</label>
+                <select
+                  value={serviceType}
+                  onChange={e => setServiceType(e.target.value as ServiceType)}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {SERVICE_TYPES.map(type => (
+                    <option key={type} value={type}>
+                      {type === 'store' ? '店舗型' : '出張型'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">最低料金 (円)</label>
+                <input
+                  type="number"
+                  value={priceMin}
+                  onChange={e => setPriceMin(Number(e.target.value))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  min={0}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">最高料金 (円)</label>
+                <input
+                  type="number"
+                  value={priceMax}
+                  onChange={e => setPriceMax(Number(e.target.value))}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  min={0}
+                />
+              </div>
+            </div>
             {loadingDetail ? <p className="text-xs text-slate-400">読み込み中...</p> : null}
           </header>
 
