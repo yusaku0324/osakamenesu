@@ -8,29 +8,23 @@ function bases() {
   return [INTERNAL_BASE, PUBLIC_BASE]
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+async function proxyAdminRequest(input: Request, params: { id: string }, init: RequestInit & { method: string }) {
   if (!ADMIN_KEY) {
     return NextResponse.json({ detail: 'admin key not configured' }, { status: 500 })
   }
-  let body: string
-  try {
-    body = JSON.stringify(await request.json())
-  } catch {
-    return NextResponse.json({ detail: 'invalid JSON body' }, { status: 400 })
-  }
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Admin-Key': ADMIN_KEY,
-  }
+  const headers = new Headers(init.headers || {})
+  headers.set('X-Admin-Key', ADMIN_KEY)
+
+  const url = new URL(input.url)
+  const search = url.search ? url.search : ''
 
   let lastError: any = null
   for (const base of bases()) {
     try {
-      const resp = await fetch(`${base}/api/admin/shops/${params.id}/availability`, {
-        method: 'PUT',
+      const resp = await fetch(`${base}/api/admin/shops/${params.id}/availability${search}`, {
+        ...init,
         headers,
-        body,
         cache: 'no-store',
       })
       const text = await resp.text()
@@ -55,5 +49,23 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json(lastError.body, { status: lastError.status })
   }
 
-  return NextResponse.json({ detail: 'admin availability update failed' }, { status: 503 })
+  return NextResponse.json({ detail: 'admin availability request failed' }, { status: 503 })
+}
+
+export async function GET(_request: Request, { params }: { params: { id: string } }) {
+  return proxyAdminRequest(_request, params, { method: 'GET' })
+}
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  let body: string
+  try {
+    body = JSON.stringify(await request.json())
+  } catch {
+    return NextResponse.json({ detail: 'invalid JSON body' }, { status: 400 })
+  }
+  return proxyAdminRequest(request, params, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  })
 }

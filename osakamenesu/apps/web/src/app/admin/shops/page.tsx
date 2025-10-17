@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useToast, ToastContainer } from '@/components/useToast'
+import { Card } from '@/components/ui/Card'
 
 const EMPTY_PHONE = ''
 
@@ -41,6 +42,8 @@ type AvailabilityDay = {
   date: string
   slots: AvailabilitySlot[]
 }
+
+const STATUS_OPTIONS: Array<AvailabilitySlot['status']> = ['open', 'tentative', 'blocked']
 
 type ContactInfo = {
   phone?: string
@@ -125,6 +128,26 @@ export default function AdminShopsPage() {
   const { toasts, push, remove } = useToast()
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false)
 
+  async function refreshAvailability(id: string) {
+    try {
+      const resp = await fetch(`/api/admin/shops/${id}/availability`, { cache: 'no-store' })
+      if (!resp.ok) throw new Error('failed to load availability')
+      const json = await resp.json()
+      const days = (json.days || []) as AvailabilityDay[]
+      setAvailability(days.map(day => ({
+        date: day.date,
+        slots: (day.slots || []).map(slot => ({
+          start_at: toLocalIso(slot.start_at),
+          end_at: toLocalIso(slot.end_at),
+          status: slot.status,
+        })),
+      })))
+    } catch (err) {
+      console.error(err)
+      push('error', '空き枠の取得に失敗しました')
+    }
+  }
+
   useEffect(() => {
     async function loadShops() {
       try {
@@ -167,14 +190,18 @@ export default function AdminShopsPage() {
           website_url: json.contact?.website_url || '',
           reservation_form_url: json.contact?.reservation_form_url || '',
         })
-        setAvailability((json.availability || []).map((day: AvailabilityDay) => ({
-          date: day.date,
-          slots: (day.slots || []).map(slot => ({
-            start_at: toLocalIso(slot.start_at),
-            end_at: toLocalIso(slot.end_at),
-            status: slot.status,
-          })),
-        })))
+        if (json.availability && json.availability.length > 0) {
+          setAvailability((json.availability || []).map((day: AvailabilityDay) => ({
+            date: day.date,
+            slots: (day.slots || []).map(slot => ({
+              start_at: toLocalIso(slot.start_at),
+              end_at: toLocalIso(slot.end_at),
+              status: slot.status,
+            })),
+          })))
+        } else {
+          setAvailability([])
+        }
         setDescription(json.description || '')
         setCatchCopy(json.catch_copy || '')
         setAddress(json.address || '')
@@ -331,10 +358,10 @@ export default function AdminShopsPage() {
   }
 
   async function saveAvailability(date: string, slots: AvailabilitySlot[]) {
-    if (!selectedId) return
+    if (!selectedId) return false
     if (!date) {
       push('error', '日付を入力してください')
-      return
+      return false
     }
     try {
       const payload = {
@@ -353,13 +380,23 @@ export default function AdminShopsPage() {
       if (!resp.ok) {
         const detailResp = await resp.json().catch(() => ({}))
         push('error', detailResp?.detail || '空き枠の保存に失敗しました')
-        return
+        return false
       }
       push('success', `${date} の空き枠を保存しました`)
+      await refreshAvailability(selectedId)
+      return true
     } catch (err) {
       console.error(err)
       push('error', 'ネットワークエラーが発生しました')
+      return false
     }
+  }
+
+  async function deleteAvailabilityDay(dayIndex: number) {
+    if (!selectedId) return
+    const target = availability[dayIndex]
+    if (!target) return
+    await saveAvailability(target.date, [])
   }
 
   if (!detail || !selectedId) {
@@ -421,6 +458,114 @@ export default function AdminShopsPage() {
               />
             </div>
           </div>
+
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">出勤・空き枠</h2>
+              <button
+                type="button"
+                onClick={addAvailabilityDay}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                日を追加
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">日付を選び、時間帯とステータスを編集して保存してください。</p>
+            {availability.length === 0 ? (
+              <Card className="p-4 text-sm text-slate-500">登録された空き枠はありません。</Card>
+            ) : null}
+            <div className="space-y-4">
+              {availability.map((day, dayIndex) => (
+                <Card key={dayIndex} className="space-y-4 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600">日付</label>
+                      <input
+                        type="date"
+                        value={day.date}
+                        onChange={e => updateAvailabilityDate(dayIndex, e.target.value)}
+                        className="rounded border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => deleteAvailabilityDay(dayIndex)}
+                        className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
+                      >
+                        日を削除
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveAvailability(day.date, day.slots)}
+                        className="rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        この日の枠を保存
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {day.slots.map((slot, slotIndex) => (
+                      <div
+                        key={slotIndex}
+                        className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_160px_auto] md:items-end"
+                      >
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600">開始</label>
+                          <input
+                            type="datetime-local"
+                            value={slot.start_at}
+                            onChange={e => updateSlot(dayIndex, slotIndex, 'start_at', e.target.value)}
+                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600">終了</label>
+                          <input
+                            type="datetime-local"
+                            value={slot.end_at}
+                            onChange={e => updateSlot(dayIndex, slotIndex, 'end_at', e.target.value)}
+                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600">ステータス</label>
+                          <select
+                            value={slot.status}
+                            onChange={e => updateSlot(dayIndex, slotIndex, 'status', e.target.value as AvailabilitySlot['status'])}
+                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                          >
+                            {STATUS_OPTIONS.map(option => (
+                              <option key={option} value={option}>
+                                {option === 'open' ? '空きあり' : option === 'tentative' ? '調整中' : '受付停止'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex h-full items-end justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeSlot(dayIndex, slotIndex)}
+                            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                          >
+                            枠を削除
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addSlot(dayIndex)}
+                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      枠を追加
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">住所</label>
