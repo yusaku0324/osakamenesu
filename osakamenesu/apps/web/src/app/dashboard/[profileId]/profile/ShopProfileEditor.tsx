@@ -48,6 +48,12 @@ const SERVICE_TYPE_OPTIONS: { value: DashboardShopServiceType; label: string }[]
   { value: 'dispatch', label: '出張型' },
 ]
 
+const STATUS_OPTIONS: { value: 'draft' | 'published' | 'hidden'; label: string; description: string }[] = [
+  { value: 'draft', label: '下書き', description: '検索には表示されず、編集者だけが閲覧できます。' },
+  { value: 'published', label: '公開中', description: '検索結果に表示され、一般ユーザーが閲覧できます。' },
+  { value: 'hidden', label: '非公開', description: '検索には表示されず、URL を知っているユーザーだけがアクセスできます。' },
+]
+
 function toMenuDraft(menu: DashboardShopMenu): MenuDraft {
   return {
     id: menu.id,
@@ -106,6 +112,9 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
   const [description, setDescription] = useState(initialData.description ?? '')
   const [catchCopy, setCatchCopy] = useState(initialData.catch_copy ?? '')
   const [address, setAddress] = useState(initialData.address ?? '')
+  const [statusValue, setStatusValue] = useState<'draft' | 'published' | 'hidden'>(
+    (initialData.status as 'draft' | 'published' | 'hidden' | undefined) ?? 'draft'
+  )
   const [contact, setContact] = useState<ContactDraft>(normalizeContact(initialData.contact))
   const [photos, setPhotos] = useState<string[]>(
     initialData.photos && initialData.photos.length ? [...initialData.photos] : ['']
@@ -134,6 +143,10 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
     }
   }, [lastSavedAt])
 
+  const selectedStatusOption = useMemo(() => {
+    return STATUS_OPTIONS.find((option) => option.value === statusValue) ?? STATUS_OPTIONS[0]
+  }, [statusValue])
+
   function hydrateFromData(data: DashboardShopProfile) {
     setName(data.name ?? '')
     setSlug(data.slug ?? '')
@@ -146,6 +159,7 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
     setDescription(data.description ?? '')
     setCatchCopy(data.catch_copy ?? '')
     setAddress(data.address ?? '')
+    setStatusValue((data.status as 'draft' | 'published' | 'hidden' | undefined) ?? 'draft')
     setContact(normalizeContact(data.contact))
     setPhotos(data.photos && data.photos.length ? [...data.photos] : [''])
     setMenus(data.menus && data.menus.length ? data.menus.map(toMenuDraft) : [emptyMenu()])
@@ -318,6 +332,7 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
       contact: contactPayload,
       menus: normalizedMenus,
       staff: normalizedStaff,
+      status: statusValue,
     }
 
     return payload
@@ -404,6 +419,15 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
             <p className="text-sm text-neutral-600">
               サイト上に表示される店舗名や料金などの基本情報を設定してください。
             </p>
+            <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-surfaceAlt px-3 py-2 text-xs text-neutral-600 md:flex-row md:items-center md:gap-3">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold uppercase tracking-wide text-neutral-500">ステータス</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-neutral-900 px-2 py-1 text-[11px] font-semibold text-white">
+                  {selectedStatusOption.label}
+                </span>
+              </div>
+              <p className="text-neutral-500">{selectedStatusOption.description}</p>
+            </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1">
@@ -447,6 +471,21 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
                 className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
               >
                 {SERVICE_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-neutral-600">公開ステータス</span>
+              <select
+                id="shop-status"
+                value={statusValue}
+                onChange={(event) => setStatusValue(event.target.value as 'draft' | 'published' | 'hidden')}
+                className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
+              >
+                {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

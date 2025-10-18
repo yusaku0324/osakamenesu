@@ -30,6 +30,7 @@ JST = ZoneInfo("Asia/Tokyo")
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 DEFAULT_BUST_TAG = "UNSPECIFIED"
+ALLOWED_PROFILE_STATUSES = {"draft", "published", "hidden"}
 
 
 def _ensure_datetime(value: datetime) -> datetime:
@@ -427,6 +428,16 @@ async def update_dashboard_shop_profile(
         else:
             profile.slug = None
 
+    if payload.status is not None:
+        status_value = payload.status.strip() if isinstance(payload.status, str) else ""
+        status_value = status_value.lower()
+        if status_value not in ALLOWED_PROFILE_STATUSES:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"field": "status", "message": "ステータスの指定が不正です。"},
+            )
+        profile.status = status_value
+
     contact_json = dict(profile.contact_json or {})
 
     if payload.contact is not None:
@@ -463,6 +474,9 @@ async def update_dashboard_shop_profile(
         tags = [tag.strip() for tag in payload.service_tags if tag.strip()]
         contact_json["service_tags"] = tags
         profile.body_tags = tags
+
+    if not contact_json.get("store_name"):
+        contact_json["store_name"] = profile.name
 
     profile.contact_json = contact_json
 

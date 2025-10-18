@@ -726,3 +726,4 @@ class DashboardShopProfileUpdatePayload(BaseModel):
     contact: Optional[DashboardShopContact] = None
     menus: Optional[List[DashboardShopMenu]] = None
     staff: Optional[List[DashboardShopStaff]] = None
+    status: Optional[str] = None
