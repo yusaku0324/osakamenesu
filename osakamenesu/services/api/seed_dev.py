@@ -104,16 +104,27 @@ def main(argv: list[str]) -> int:
             f"https://picsum.photos/seed/menesu{i+1}-3/800/600",
         ]
 
-        base_store_name = f"{area}メンエス {chr(65 + (i % 3))}店"
+        store_name = f"{area}メンエス {chr(65 + (i % 3))}店"
         rating = 4.1 + (i % 4) * 0.2
         review_count = 35 + i * 3
+        primary_staff_rating = min(4.9, rating + 0.2)
+        primary_staff = {
+            "name": name,
+            "alias": "指名No.1",
+            "avatar_url": f"https://i.pravatar.cc/160?img={(i % 60) + 5}",
+            "headline": "常連支持率トップの人気セラピストです。",
+            "specialties": ["オイル", "リンパ", "ドライヘッド"],
+            "rating": round(primary_staff_rating, 1),
+            "review_count": review_count + 12,
+        }
         contact_json = {
             "line": f"line_{i:03}",
             "line_id": f"line_{i:03}",
             "tel": f"0900000{i:03}",
             "phone": f"0900000{i:03}",
             "web": "https://example.com",
-            "store_name": base_store_name,
+            "store_name": store_name,
+            "lead_therapist": name,
             "address": f"大阪市中央区{area}ビル{i % 7 + 1}F",
             "ranking_reason": "編集部が雰囲気・技術を取材してピックアップしています。",
             "service_tags": body_tags,
@@ -136,18 +147,19 @@ def main(argv: list[str]) -> int:
                 },
             ],
             "staff": [
+                primary_staff,
                 {
                     "name": names[(i + 1) % len(names)],
-                    "alias": "セラピスト",
+                    "alias": "新人",
                     "avatar_url": f"https://i.pravatar.cc/160?img={(i % 60) + 1}",
                     "headline": "繊細なハンドトリートメントが得意です。",
                     "specialties": ["ドライヘッド", "ディープリンパ"],
-                    "rating": rating,
+                    "rating": round(rating, 1),
                     "review_count": review_count,
                 },
                 {
                     "name": names[(i + 2) % len(names)],
-                    "alias": "新人",
+                    "alias": "ムードメーカー",
                     "avatar_url": f"https://i.pravatar.cc/160?img={(i % 60) + 20}",
                     "headline": "笑顔が魅力のセラピスト。丁寧なカウンセリング付き。",
                     "specialties": ["ホットストーン", "ストレッチ"],
@@ -190,7 +202,7 @@ def main(argv: list[str]) -> int:
         ] if i % 3 == 1 else []
 
         body = {
-            "name": name,
+            "name": store_name,
             "area": area,
             "price_min": price_min,
             "price_max": price_max,

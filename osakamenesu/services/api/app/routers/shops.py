@@ -253,6 +253,7 @@ def _doc_to_shop_summary(doc: Dict[str, Any]) -> ShopSummary:
         id=UUID(doc["id"]),
         slug=doc.get("slug"),
         name=doc.get("name", ""),
+        store_name=doc.get("store_name"),
         area=doc.get("area", ""),
         area_name=doc.get("area_name"),
         address=doc.get("address"),
@@ -285,6 +286,7 @@ def _doc_to_shop_summary(doc: Dict[str, Any]) -> ShopSummary:
         ranking_score=doc.get("ranking_score"),
         diary_count=doc.get("diary_count"),
         has_diaries=doc.get("has_diaries"),
+        staff_preview=_normalize_staff_preview(doc.get("staff_preview")),
     )
 
 
@@ -531,6 +533,39 @@ def _normalize_promotions(*sources: Any) -> List[Promotion]:
                 )
             )
     return promotions
+
+
+def _normalize_staff_preview(raw: Any) -> List[schemas.ShopStaffPreview]:
+    previews: List[schemas.ShopStaffPreview] = []
+    if not isinstance(raw, list):
+        return previews
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name_raw = entry.get("name")
+        if not name_raw:
+            continue
+        name = str(name_raw).strip()
+        if not name:
+            continue
+        specialties_raw = entry.get("specialties")
+        if isinstance(specialties_raw, list):
+            specialties = [str(tag).strip() for tag in specialties_raw if str(tag).strip()]
+        else:
+            specialties = []
+        previews.append(
+            schemas.ShopStaffPreview(
+                id=(str(entry.get("id")).strip() or None) if entry.get("id") is not None else None,
+                name=name,
+                alias=(str(entry.get("alias")).strip() or None) if entry.get("alias") is not None else None,
+                headline=(str(entry.get("headline")).strip() or None) if entry.get("headline") is not None else None,
+                rating=_safe_float(entry.get("rating")),
+                review_count=_safe_int(entry.get("review_count")),
+                avatar_url=(str(entry.get("avatar_url")).strip() or None) if entry.get("avatar_url") is not None else None,
+                specialties=specialties,
+            )
+        )
+    return previews
 
 
 def _normalize_reviews(raw: Any) -> ReviewSummary:

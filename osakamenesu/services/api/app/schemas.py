@@ -145,10 +145,22 @@ class FacetValue(BaseModel):
     selected: Optional[bool] = None
 
 
+class ShopStaffPreview(BaseModel):
+    id: Optional[str] = None
+    name: str
+    alias: Optional[str] = None
+    headline: Optional[str] = None
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    avatar_url: Optional[str] = None
+    specialties: List[str] = Field(default_factory=list)
+
+
 class ShopSummary(BaseModel):
     id: UUID
     slug: Optional[str] = None
     name: str
+    store_name: Optional[str] = None
     area: str
     area_name: Optional[str] = None
     address: Optional[str] = None
@@ -179,6 +191,7 @@ class ShopSummary(BaseModel):
     has_discounts: Optional[bool] = None
     promotion_count: Optional[int] = None
     ranking_score: Optional[float] = None
+    staff_preview: List[ShopStaffPreview] = Field(default_factory=list)
 
 
 class ShopSearchResponse(BaseModel):
@@ -200,7 +213,6 @@ class SocialLink(BaseModel):
     platform: str
     url: str
     label: Optional[str] = None
-
 
 class ContactInfo(BaseModel):
     phone: Optional[str] = None
