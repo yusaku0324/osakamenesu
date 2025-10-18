@@ -396,17 +396,33 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
   const hits = results ?? []
   const useSampleData = hits.length === 0
   const displayHits = useSampleData ? SAMPLE_RESULTS : hits
-  const therapistHits = buildTherapistHits(displayHits)
-  const showTherapists = therapistHits.length > 0
-  const baseTotal = useSampleData ? SAMPLE_RESULTS.length : total
-  const displayTotal = showTherapists ? therapistHits.length : baseTotal
-  const displayPageSize = useSampleData ? SAMPLE_RESULTS.length : pageSize
-  const displayPage = useSampleData ? 1 : page
-  const displayLastPage = useSampleData ? 1 : Math.max(1, Math.ceil((total || 0) / (pageSize || 12)))
   const highlights = buildHighlights(facets, hits)
   const displayHighlights = useSampleData ? buildHighlights({}, SAMPLE_RESULTS) : highlights
   const editorialSpots = buildEditorialSpots(total)
   const displayEditorialSpots = useSampleData ? buildEditorialSpots(SAMPLE_RESULTS.length) : editorialSpots
+
+  const hasActiveFilters = Object.entries(searchParams || {}).some(
+    ([key, value]) =>
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
+      key !== 'page' &&
+      key !== 'page_size',
+  )
+
+  const therapistHitsFromResults = buildTherapistHits(displayHits)
+  const usingSampleTherapists = !hasActiveFilters && therapistHitsFromResults.length === 0
+  const therapistHits = usingSampleTherapists ? buildTherapistHits(SAMPLE_RESULTS) : therapistHitsFromResults
+  const showTherapistSection = therapistHits.length > 0
+  const therapistTotal = therapistHits.length
+
+  const resolvedPageSize = pageSize || 12
+  const resolvedPage = page || 1
+  const showShopSection = displayHits.length > 0
+  const shopTotal = useSampleData ? SAMPLE_RESULTS.length : (total || 0)
+  const shopPageSize = useSampleData ? SAMPLE_RESULTS.length : resolvedPageSize
+  const shopPage = useSampleData ? 1 : resolvedPage
+  const shopLastPage = useSampleData ? 1 : Math.max(1, Math.ceil((total || 0) / resolvedPageSize))
 
   const areaFacetSource = facets.area ?? []
   const derivedAreaFacets: FacetValue[] = areaFacetSource.length
@@ -436,11 +452,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
   const qp = (n: number) => {
     const entries = Object.entries(searchParams || {}).filter(([, v]) => v !== undefined && v !== null)
     const sp = new URLSearchParams(entries as [string, string][])
-    sp.set('page', String(Math.min(Math.max(n, 1), displayLastPage)))
+    sp.set('page', String(Math.min(Math.max(n, 1), shopLastPage)))
     return `/search?${sp.toString()}`
   }
 
-  const resultUnit = showTherapists ? '名' : '件'
+  const heroResultCount = showTherapistSection ? therapistTotal : shopTotal
+  const heroResultUnit = showTherapistSection ? '名' : '件'
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-neutral-surface">
@@ -460,11 +477,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
                 大阪メンエス.com
               </span>
               <h1 className="text-3xl font-semibold tracking-tight text-neutral-text">
-                {showTherapists ? 'セラピストを探す' : '大阪メンエスを探す'}
+                {showTherapistSection ? 'セラピストを探す' : '大阪メンエスを探す'}
               </h1>
               <p className="max-w-2xl text-sm leading-relaxed text-neutral-textMuted">
                 最新の出勤情報や写メ日記、スタッフ紹介まで、メンエス選びに欲しい情報をワンストップで届けます。
-                {showTherapists
+                {showTherapistSection
                   ? ' エリアや得意な施術から、あなたにぴったりのセラピストを見つけてください。'
                   : ' 気になるエリアや料金帯を組み合わせて、ぴったりの店舗を見つけましょう。'}
               </p>
@@ -472,8 +489,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
             <div className="flex flex-col items-start gap-3 text-left lg:items-end lg:text-right">
               <span className="text-xs font-semibold uppercase tracking-wide text-brand-primary/80">掲載件数</span>
               <div className="text-3xl font-bold text-neutral-text">
-                {Intl.NumberFormat('ja-JP').format(displayTotal)}
-                <span className="ml-1 text-base font-medium text-neutral-textMuted">{resultUnit}</span>
+                {Intl.NumberFormat('ja-JP').format(heroResultCount)}
+                <span className="ml-1 text-base font-medium text-neutral-textMuted">{heroResultUnit}</span>
               </div>
               <span className="text-xs text-neutral-textMuted">毎日アップデート中</span>
             </div>
@@ -509,109 +526,105 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
 
         <div className="space-y-6 lg:space-y-8">
           <SearchFilters init={searchParams} facets={facets} />
-          <Section
-            id="search-results"
-            ariaLive="polite"
-            title={`検索結果 ${Intl.NumberFormat('ja-JP').format(displayTotal)}${resultUnit}`}
-            subtitle={
-              showTherapists
-                ? displayTotal > 0
-                  ? '人気セラピストをピックアップ'
-                  : '条件を調整するとセラピストが表示されます'
-                : displayHits.length
-                  ? `ページ ${displayPage} / ${displayLastPage}（${displayPageSize}件ずつ表示）`
-                  : '条件を調整すると候補が表示されます'
-            }
-            actions={displayTotal > 0 ? <span className="text-xs text-neutral-textMuted">最新情報は毎日更新</span> : undefined}
-            className="border border-neutral-borderLight/70 bg-white/85 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
-          >
-            {useSampleData ? (
-              <div className="mb-6 rounded-card border border-brand-primary/30 bg-brand-primary/5 p-4 text-sm text-brand-primaryDark">
-                API から検索結果を取得できなかったため、参考用のサンプル{showTherapists ? 'セラピスト' : '店舗'}を表示しています。
-              </div>
-            ) : null}
-            {displayTotal === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-card border border-dashed border-neutral-borderLight/80 bg-neutral-surfaceAlt/70 p-10 text-center text-neutral-textMuted">
-                <p className="text-base font-medium text-neutral-text">
-                  {showTherapists ? '一致するセラピストが見つかりませんでした' : '一致する店舗が見つかりませんでした'}
-                </p>
-                <p className="text-sm leading-relaxed">キーワードや条件を調整すると候補が表示される場合があります。</p>
-              </div>
-            ) : (
-              <>
-                {showTherapists ? (
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                    {therapistHits.map((hit) => (
-                      <TherapistCard key={hit.id} hit={hit} />
-                    ))}
-                  </div>
-                ) : (
-                  (() => {
-                    type GridItem =
-                      | { kind: 'shop'; value: ShopHit }
-                      | { kind: 'spotlight'; value: SpotlightItem }
 
-                    const gridItems: GridItem[] = []
-                    const prSlots = [1, 8, 15]
+          {showTherapistSection ? (
+            <Section
+              id="therapist-results"
+              ariaLive="polite"
+              title={`セラピスト ${Intl.NumberFormat('ja-JP').format(therapistTotal)}名`}
+              subtitle="人気セラピストをピックアップ"
+              actions={<span className="text-xs text-neutral-textMuted">最新情報は毎日更新</span>}
+              className="border border-neutral-borderLight/70 bg-white/85 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
+            >
+              {usingSampleTherapists ? (
+                <div className="mb-6 rounded-card border border-brand-primary/30 bg-brand-primary/5 p-4 text-sm text-brand-primaryDark">
+                  API の検索結果にセラピスト情報が含まれていなかったため、参考用のサンプルセラピストを表示しています。
+                </div>
+              ) : null}
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {therapistHits.map((hit) => (
+                  <TherapistCard key={hit.id} hit={hit} />
+                ))}
+              </div>
+            </Section>
+          ) : null}
 
-                    if (displayHits.length > 0) {
-                      let prIndex = 0
-                      displayHits.forEach((hit, idx) => {
-                        if (prSlots.includes(idx + 1) && prIndex < displayEditorialSpots.length) {
-                          gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
-                          prIndex += 1
-                        }
-                        gridItems.push({ kind: 'shop', value: hit })
-                      })
-                      while (gridItems.length < displayHits.length + displayEditorialSpots.length && prIndex < displayEditorialSpots.length) {
+          {showShopSection ? (
+            <Section
+              id="search-results"
+              ariaLive="polite"
+              title={`店舗検索結果 ${Intl.NumberFormat('ja-JP').format(shopTotal)}件`}
+              subtitle={`ページ ${shopPage} / ${shopLastPage}（${shopPageSize}件ずつ表示）`}
+              actions={<span className="text-xs text-neutral-textMuted">最新情報は毎日更新</span>}
+              className="border border-neutral-borderLight/70 bg-white/85 shadow-lg shadow-neutral-950/5 backdrop-blur supports-[backdrop-filter]:bg-white/70"
+            >
+              {useSampleData ? (
+                <div className="mb-6 rounded-card border border-brand-primary/30 bg-brand-primary/5 p-4 text-sm text-brand-primaryDark">
+                  API から検索結果を取得できなかったため、参考用のサンプル店舗を表示しています。
+                </div>
+              ) : null}
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {(() => {
+                  type GridItem =
+                    | { kind: 'shop'; value: ShopHit }
+                    | { kind: 'spotlight'; value: SpotlightItem }
+
+                  const gridItems: GridItem[] = []
+                  const prSlots = [1, 8, 15]
+
+                  if (displayHits.length > 0) {
+                    let prIndex = 0
+                    displayHits.forEach((hit, idx) => {
+                      if (prSlots.includes(idx + 1) && prIndex < displayEditorialSpots.length) {
                         gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
                         prIndex += 1
                       }
+                      gridItems.push({ kind: 'shop', value: hit })
+                    })
+                    while (gridItems.length < displayHits.length + displayEditorialSpots.length && prIndex < displayEditorialSpots.length) {
+                      gridItems.push({ kind: 'spotlight', value: displayEditorialSpots[prIndex] })
+                      prIndex += 1
                     }
+                  }
 
-                    return (
-                      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                        {(gridItems.length ? gridItems : displayHits.map((hit) => ({ kind: 'shop', value: hit }))).map((item) =>
-                          item.kind === 'shop' ? (
-                            <ShopCard key={item.value.id} hit={item.value} />
-                          ) : (
-                            <a key={item.value.id} href={item.value.href} className="block focus:outline-none">
-                              <Card interactive className="h-full bg-gradient-to-br from-brand-primary/15 via-brand-primary/10 to-brand-secondary/15 p-6">
-                                <Badge variant="brand" className="mb-3 w-fit shadow-sm">
-                                  PR
-                                </Badge>
-                                <h3 className="text-lg font-semibold text-neutral-text">{item.value.title}</h3>
-                                <p className="mt-2 text-sm text-neutral-textMuted">{item.value.description}</p>
-                                <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-primaryDark">
-                                  くわしく見る
-                                  <span aria-hidden>→</span>
-                                </span>
-                              </Card>
-                            </a>
-                          ),
-                        )}
-                      </div>
-                    )
-                  })()
-                )}
-              </>
-            )}
+                  const itemsToRender = gridItems.length ? gridItems : displayHits.map((hit) => ({ kind: 'shop', value: hit }))
 
-            {!showTherapists && displayHits.length > 0 ? (
+                  return itemsToRender.map((item) =>
+                    item.kind === 'shop' ? (
+                      <ShopCard key={item.value.id} hit={item.value} />
+                    ) : (
+                      <a key={item.value.id} href={item.value.href} className="block focus:outline-none">
+                        <Card interactive className="h-full bg-gradient-to-br from-brand-primary/15 via-brand-primary/10 to-brand-secondary/15 p-6">
+                          <Badge variant="brand" className="mb-3 w-fit shadow-sm">
+                            PR
+                          </Badge>
+                          <h3 className="text-lg font-semibold text-neutral-text">{item.value.title}</h3>
+                          <p className="mt-2 text-sm text-neutral-textMuted">{item.value.description}</p>
+                          <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-primaryDark">
+                            くわしく見る
+                            <span aria-hidden>→</span>
+                          </span>
+                        </Card>
+                      </a>
+                    ),
+                  )
+                })()}
+              </div>
+
               <nav className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-borderLight/70 pt-5 text-sm" aria-label="検索結果ページネーション">
                 <div className="text-neutral-textMuted" aria-live="polite">
-                  {displayPage} / {displayLastPage}ページ（{Intl.NumberFormat('ja-JP').format(displayTotal)}{resultUnit}）
+                  {shopPage} / {shopLastPage}ページ（{Intl.NumberFormat('ja-JP').format(shopTotal)}件）
                 </div>
                 <div className="flex items-center gap-2">
-                  {displayPage > 1 ? (
-                    <a href={qp(displayPage - 1)} className="rounded-badge border border-neutral-borderLight px-3 py-1 transition hover:border-brand-primary hover:text-brand-primary">
+                  {shopPage > 1 ? (
+                    <a href={qp(shopPage - 1)} className="rounded-badge border border-neutral-borderLight px-3 py-1 transition hover:border-brand-primary hover:text-brand-primary">
                       前へ
                     </a>
                   ) : (
                     <span className="rounded-badge border border-neutral-borderLight/70 px-3 py-1 text-neutral-textMuted/60">前へ</span>
                   )}
-                  {displayPage < displayLastPage ? (
-                    <a href={qp(displayPage + 1)} className="rounded-badge border border-neutral-borderLight px-3 py-1 transition hover:border-brand-primary hover:text-brand-primary">
+                  {shopPage < shopLastPage ? (
+                    <a href={qp(shopPage + 1)} className="rounded-badge border border-neutral-borderLight px-3 py-1 transition hover:border-brand-primary hover:text-brand-primary">
                       次へ
                     </a>
                   ) : (
@@ -619,8 +632,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Param
                   )}
                 </div>
               </nav>
-            ) : null}
-          </Section>
+            </Section>
+          ) : null}
+
+          {!showTherapistSection && !showShopSection ? (
+            <div className="flex flex-col items-center justify-center gap-4 rounded-card border border-dashed border-neutral-borderLight/80 bg-neutral-surfaceAlt/70 p-10 text-center text-neutral-textMuted">
+              <p className="text-base font-medium text-neutral-text">一致するセラピスト・店舗が見つかりませんでした</p>
+              <p className="text-sm leading-relaxed">キーワードや条件を調整すると候補が表示される場合があります。</p>
+            </div>
+          ) : null}
         </div>
       </div>
     </main>
