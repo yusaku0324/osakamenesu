@@ -77,6 +77,7 @@ export type DashboardShopProfileUpdatePayload = {
   contact?: DashboardShopContact | null
   menus?: DashboardShopMenu[]
   staff?: DashboardShopStaff[]
+  status?: string
 }
 
 export type DashboardShopProfileCreatePayload = {
@@ -284,6 +285,7 @@ export async function updateDashboardShopProfile(
           menus: payload.menus ?? [],
           staff: payload.staff ?? [],
           updated_at: payload.updated_at,
+          status: payload.status ?? 'draft',
         }
         return { status: 'conflict', current: fallback }
       }
