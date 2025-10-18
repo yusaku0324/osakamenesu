@@ -140,42 +140,48 @@ async def verify_token(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ):
-    now = datetime.now(UTC)
-    token_hash = hash_token(payload.token)
-    stmt = select(models.UserAuthToken).where(models.UserAuthToken.token_hash == token_hash)
-    result = await db.execute(stmt)
-    auth_token = result.scalar_one_or_none()
-    if not auth_token or auth_token.consumed_at or auth_token.expires_at < now:
-        raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+    try:
+        now = datetime.now(UTC)
+        token_hash = hash_token(payload.token)
+        stmt = select(models.UserAuthToken).where(models.UserAuthToken.token_hash == token_hash)
+        result = await db.execute(stmt)
+        auth_token = result.scalar_one_or_none()
+        if not auth_token or auth_token.consumed_at or auth_token.expires_at < now:
+            raise HTTPException(status_code=400, detail="invalid_or_expired_token")
 
-    user = await db.get(models.User, auth_token.user_id)
-    if not user:
-        raise HTTPException(status_code=400, detail="user_not_found")
+        user = await db.get(models.User, auth_token.user_id)
+        if not user:
+            raise HTTPException(status_code=400, detail="user_not_found")
 
-    auth_token.consumed_at = now
-    auth_token.ip_hash = _hash_ip(_ip_from_request(request)) or auth_token.ip_hash
-    auth_token.user_agent = request.headers.get("user-agent")
+        auth_token.consumed_at = now
+        auth_token.ip_hash = _hash_ip(_ip_from_request(request)) or auth_token.ip_hash
+        auth_token.user_agent = request.headers.get("user-agent")
 
-    session_token = generate_token()
-    session_hash = hash_token(session_token)
-    session = models.UserSession(
-        user_id=user.id,
-        token_hash=session_hash,
-        issued_at=now,
-        expires_at=session_expiry(now),
-        ip_hash=_hash_ip(_ip_from_request(request)),
-        user_agent=request.headers.get("user-agent"),
-    )
-    db.add(session)
-    user.last_login_at = now
-    if not user.email_verified_at:
-        user.email_verified_at = now
+        session_token = generate_token()
+        session_hash = hash_token(session_token)
+        session = models.UserSession(
+            user_id=user.id,
+            token_hash=session_hash,
+            issued_at=now,
+            expires_at=session_expiry(now),
+            ip_hash=_hash_ip(_ip_from_request(request)),
+            user_agent=request.headers.get("user-agent"),
+        )
+        db.add(session)
+        user.last_login_at = now
+        if not user.email_verified_at:
+            user.email_verified_at = now
 
-    await db.commit()
+        await db.commit()
 
-    response = JSONResponse({"ok": True})
-    _set_session_cookie(response, session_token)
-    return response
+        response = JSONResponse({"ok": True})
+        _set_session_cookie(response, session_token)
+        return response
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("magic_link_verify_failed")
+        raise HTTPException(status_code=500, detail="verification_failed") from exc
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
