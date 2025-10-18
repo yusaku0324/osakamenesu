@@ -251,6 +251,7 @@ jobs:
           MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
           MEILI_HOST_FALLBACK: ${{ secrets.MEILI_HOST }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          SITE_BASE_URL: ${{ secrets.SITE_BASE_URL }}
         run: |
           set -euo pipefail
           MEILI_HOST_EFFECTIVE="${MEILI_URL:-}"
@@ -266,7 +267,7 @@ jobs:
             --region "$CLOUD_RUN_REGION" \
             --add-cloudsql-instances "${GCP_PROJECT_ID}:${CLOUD_RUN_REGION}:osakamenesu-pg" \
             --image "$IMAGE" \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL},MEILI_HOST=${MEILI_HOST_EFFECTIVE},MEILI_MASTER_KEY=${MEILI_MASTER_KEY},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY}"
+            --update-env-vars "DATABASE_URL=${DATABASE_URL},MEILI_HOST=${MEILI_HOST_EFFECTIVE},MEILI_MASTER_KEY=${MEILI_MASTER_KEY},ADMIN_API_KEY=${ADMIN_API_KEY},OSAKAMENESU_ADMIN_API_KEY=${ADMIN_API_KEY},SITE_BASE_URL=${SITE_BASE_URL}"
 
       - name: Deploy osakamenesu-web to Cloud Run
         env:
