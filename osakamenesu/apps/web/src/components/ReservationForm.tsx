@@ -68,6 +68,7 @@ export default function ReservationForm({ shopId, defaultStart, defaultDurationM
   })()
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const shopUuid = uuidPattern.test(shopId) ? shopId : null
+  const isDemoEnvironment = !shopUuid
   const staffUuid = (() => {
     if (!staffId) return undefined
     return uuidPattern.test(staffId) ? staffId : undefined
@@ -90,6 +91,10 @@ export default function ReservationForm({ shopId, defaultStart, defaultDurationM
   }
 
   async function submit() {
+    if (isDemoEnvironment) {
+      push('error', 'デモデータのため、この環境では予約送信できません。')
+      return
+    }
 
     const start = new Date(form.desiredStart)
     if (Number.isNaN(start.getTime())) {
@@ -97,10 +102,6 @@ export default function ReservationForm({ shopId, defaultStart, defaultDurationM
       return
     }
     const end = new Date(start.getTime() + form.durationMinutes * 60000)
-    if (!shopUuid) {
-      push('error', '現在の環境では予約送信を行えません。（デモデータ）')
-      return
-    }
     startTransition(async () => {
       try {
         const payload = {
@@ -256,14 +257,19 @@ export default function ReservationForm({ shopId, defaultStart, defaultDurationM
             lastPayload={lastPayload}
           />
         ) : null}
+        {isDemoEnvironment ? (
+          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+            この店舗はデモデータのため、予約リクエストの送信は無効化されています。
+          </div>
+        ) : null}
       </div>
       <ToastContainer toasts={toasts} onDismiss={remove} />
       <button
         onClick={submit}
-        disabled={disabled}
+        disabled={disabled || isDemoEnvironment}
         className="w-full bg-blue-600 text-white py-2 rounded shadow disabled:opacity-50"
       >
-        {disabled ? '送信中...' : '予約リクエストを送信'}
+        {disabled ? '送信中...' : isDemoEnvironment ? 'デモ環境では送信できません' : '予約リクエストを送信'}
       </button>
     </div>
   )
