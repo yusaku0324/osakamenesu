@@ -102,11 +102,7 @@ export function ShopCreateForm({ cookieHeader }: Props) {
       const result = await createDashboardShopProfile(payload, { cookieHeader })
       switch (result.status) {
         case 'success': {
-          push({
-            id: 'shop-create-success',
-            title: '店舗を作成しました',
-            tone: 'positive',
-          })
+          push('success', '店舗を作成しました')
           router.replace(`/dashboard/${result.data.id}/profile`)
           return
         }
