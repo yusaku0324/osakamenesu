@@ -79,6 +79,16 @@ export default async function DashboardHomePage({
         </p>
       </header>
 
+      <div className="flex flex-wrap items-center gap-3 rounded border border-neutral-borderLight/70 bg-neutral-surfaceAlt px-4 py-3 text-sm text-neutral-600">
+        <span>新しい店舗を追加する場合はこちらから。</span>
+        <Link
+          href="/dashboard/new"
+          className="inline-flex items-center rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-neutral-700"
+        >
+          新しい店舗を追加
+        </Link>
+      </div>
+
       <section className="grid gap-6 md:grid-cols-2">
         <Card className="p-6">
           <div className="space-y-2">

@@ -31,6 +31,7 @@ export type DashboardShopProfile = {
   id: string
   slug?: string | null
   name: string
+  store_name?: string | null
   area: string
   price_min: number
   price_max: number
@@ -78,6 +79,20 @@ export type DashboardShopProfileUpdatePayload = {
   staff?: DashboardShopStaff[]
 }
 
+export type DashboardShopProfileCreatePayload = {
+  name: string
+  area: string
+  price_min: number
+  price_max: number
+  service_type?: DashboardShopServiceType
+  service_tags?: string[]
+  description?: string | null
+  catch_copy?: string | null
+  address?: string | null
+  photos?: string[]
+  contact?: DashboardShopContact | null
+}
+
 export type DashboardShopProfileUpdateResult =
   | { status: 'success'; data: DashboardShopProfile }
   | { status: 'conflict'; current: DashboardShopProfile }
@@ -85,6 +100,13 @@ export type DashboardShopProfileUpdateResult =
   | { status: 'unauthorized' }
   | { status: 'forbidden'; detail?: string }
   | { status: 'not_found' }
+  | { status: 'error'; message: string }
+
+export type DashboardShopProfileCreateResult =
+  | { status: 'success'; data: DashboardShopProfile }
+  | { status: 'validation_error'; detail: unknown }
+  | { status: 'unauthorized' }
+  | { status: 'forbidden'; detail?: string }
   | { status: 'error'; message: string }
 
 function createRequestInit(
@@ -280,6 +302,41 @@ export async function updateDashboardShopProfile(
     return {
       status: 'error',
       message: error instanceof Error ? error.message : '店舗情報の更新に失敗しました',
+    }
+  }
+}
+
+export async function createDashboardShopProfile(
+  payload: DashboardShopProfileCreatePayload,
+  options?: DashboardShopRequestOptions
+): Promise<DashboardShopProfileCreateResult> {
+  try {
+    const { response, data } = await requestJson<
+      DashboardShopProfile | { detail?: unknown }
+    >('api/dashboard/shops', createRequestInit('POST', options, payload), [201])
+
+    switch (response.status) {
+      case 201:
+        return { status: 'success', data: data as DashboardShopProfile }
+      case 401:
+        return { status: 'unauthorized' }
+      case 403:
+        return { status: 'forbidden', detail: (data as { detail?: string } | undefined)?.detail }
+      case 422:
+        return { status: 'validation_error', detail: (data as { detail?: unknown } | undefined)?.detail }
+      default:
+        return {
+          status: 'error',
+          message: `店舗情報の作成に失敗しました (status=${response.status})`,
+        }
+    }
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'status' in error) {
+      return error as DashboardShopProfileCreateResult
+    }
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : '店舗情報の作成に失敗しました',
     }
   }
 }
