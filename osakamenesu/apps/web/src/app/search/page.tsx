@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Section } from '@/components/ui/Section'
 import { Card } from '@/components/ui/Card'
 import { buildApiUrl, resolveApiBases } from '@/lib/api'
+import { buildStaffIdentifier } from '@/lib/staff'
 
 const SAMPLE_RESULTS: ShopHit[] = [
   {
@@ -365,14 +366,17 @@ function buildTherapistHits(hits: ShopHit[]): TherapistHit[] {
     return hit.staff_preview
       .filter((staff): staff is StaffPreview & { name: string } => Boolean(staff && staff.name))
       .map((staff, index) => {
-        const staffId = staff.id || `${index}`
-        const uniqueId = `${hit.id}-${staffId}`
+        const staffIdentifier = buildStaffIdentifier(
+          { id: staff.id ?? null, alias: staff.alias ?? null, name: staff.name },
+          `${index}`,
+        )
+        const uniqueId = `${hit.id}-${staffIdentifier}`
         const specialties = Array.isArray(staff.specialties)
           ? staff.specialties.filter((tag): tag is string => Boolean(tag)).map((tag) => tag.trim()).filter(Boolean)
           : []
         return {
           id: uniqueId,
-          staffId,
+          staffId: staffIdentifier,
           name: staff.name,
           alias: staff.alias ?? null,
           headline: staff.headline ?? null,

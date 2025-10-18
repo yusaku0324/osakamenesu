@@ -9,31 +9,14 @@ import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Section } from '@/components/ui/Section'
 import { fetchShop, type ShopDetail, type StaffSummary } from '../../page'
+import { buildStaffIdentifier, staffMatchesIdentifier, slugifyStaffIdentifier } from '@/lib/staff'
 
 const ReservationForm = dynamic(() => import('@/components/ReservationForm'), { ssr: false })
 
-function decode(value: string) {
-  try {
-    return decodeURIComponent(value)
-  } catch {
-    return value
-  }
-}
-
-function normalize(value?: string | null) {
-  return value ? decode(value).trim().toLowerCase() : ''
-}
-
 function findStaff(shop: ShopDetail, staffId: string): StaffSummary | null {
-  const target = normalize(staffId)
-  if (!target) return null
+  if (!staffId) return null
   const list = Array.isArray(shop.staff) ? shop.staff : []
-  return (
-    list.find((member) => normalize(member.id) === target) ||
-    list.find((member) => normalize(member.alias) === target) ||
-    list.find((member) => normalize(member.name) === target) ||
-    null
-  )
+  return list.find((member) => staffMatchesIdentifier(member, staffId)) || null
 }
 
 function buildShopHref(params: { id: string }) {
@@ -41,7 +24,8 @@ function buildShopHref(params: { id: string }) {
 }
 
 function buildStaffHref(shopId: string, staff: StaffSummary) {
-  return `/profiles/${shopId}/staff/${encodeURIComponent(staff.id)}`
+  const identifier = buildStaffIdentifier(staff, staff.id || staff.alias || staff.name || 'staff')
+  return `/profiles/${shopId}/staff/${encodeURIComponent(identifier)}`
 }
 
 function listOtherStaff(shop: ShopDetail, currentId: string) {
@@ -119,12 +103,16 @@ export default async function StaffProfilePage({ params, searchParams }: StaffPa
   const contact = shop.contact || {}
   const otherStaff = listOtherStaff(shop, staff.id)
   const availabilityDays = Array.isArray(shop.availability_calendar?.days) ? shop.availability_calendar?.days ?? [] : []
-  const normalizedStaffId = normalize(staff.id)
+  const normalizedStaffId = slugifyStaffIdentifier(staff.id) || slugifyStaffIdentifier(staff.alias) || slugifyStaffIdentifier(staff.name)
   const staffAvailability = availabilityDays
     .map((day) => ({
       date: day.date,
       is_today: day.is_today,
-      slots: (day.slots || []).filter((slot) => normalize(slot.staff_id) === normalizedStaffId),
+      slots: (day.slots || []).filter((slot) => {
+        if (!normalizedStaffId) return false
+        const slotIdSlug = slugifyStaffIdentifier(slot.staff_id)
+        return slotIdSlug === normalizedStaffId
+      }),
     }))
     .filter((day) => day.slots.length > 0)
     .sort((a, b) => a.date.localeCompare(b.date))
