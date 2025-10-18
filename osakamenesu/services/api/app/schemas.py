@@ -679,6 +679,7 @@ class DashboardShopProfileResponse(BaseModel):
     id: UUID
     slug: Optional[str] = None
     name: str
+    store_name: Optional[str] = None
     area: str
     price_min: int
     price_max: int
@@ -693,6 +694,20 @@ class DashboardShopProfileResponse(BaseModel):
     staff: List[DashboardShopStaff] = Field(default_factory=list)
     updated_at: datetime
     status: Optional[str] = None
+
+
+class DashboardShopProfileCreatePayload(BaseModel):
+    name: str
+    area: str
+    price_min: int = Field(ge=0)
+    price_max: int = Field(ge=0)
+    service_type: Optional[str] = None
+    service_tags: Optional[List[str]] = None
+    description: Optional[str] = None
+    catch_copy: Optional[str] = None
+    address: Optional[str] = None
+    photos: Optional[List[str]] = None
+    contact: Optional[DashboardShopContact] = None
 
 
 class DashboardShopProfileUpdatePayload(BaseModel):

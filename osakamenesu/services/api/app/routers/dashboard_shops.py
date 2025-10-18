@@ -17,6 +17,7 @@ from ..meili import index_profile
 from ..schemas import (
     DashboardShopContact,
     DashboardShopMenu,
+    DashboardShopProfileCreatePayload,
     DashboardShopProfileResponse,
     DashboardShopProfileUpdatePayload,
     DashboardShopStaff,
@@ -27,6 +28,8 @@ from ..utils.slug import slugify
 JST = ZoneInfo("Asia/Tokyo")
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+DEFAULT_BUST_TAG = "UNSPECIFIED"
 
 
 def _ensure_datetime(value: datetime) -> datetime:
@@ -127,6 +130,7 @@ def _serialize_profile(profile: models.Profile) -> DashboardShopProfileResponse:
         id=profile.id,
         slug=profile.slug,
         name=profile.name,
+        store_name=contact_json.get("store_name") or profile.name,
         area=profile.area,
         price_min=profile.price_min,
         price_max=profile.price_max,
@@ -205,6 +209,113 @@ def _update_contact_json(
             contact_json["reservation_form_url"] = contact.reservation_form_url
         else:
             contact_json.pop("reservation_form_url", None)
+
+
+def _sanitize_service_tags(raw: Optional[List[str]]) -> List[str]:
+    if not raw:
+        return []
+    tags: List[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        value = item.strip()
+        if value:
+            tags.append(value)
+    return tags
+
+
+def _sanitize_photos(raw: Optional[List[str]]) -> List[str]:
+    if not raw:
+        return []
+    photos: List[str] = []
+    for url in raw:
+        if not isinstance(url, str):
+            continue
+        value = url.strip()
+        if value:
+            photos.append(value)
+    return photos
+
+
+@router.post("/shops", response_model=DashboardShopProfileResponse, status_code=status.HTTP_201_CREATED)
+async def create_dashboard_shop_profile(
+    payload: DashboardShopProfileCreatePayload,
+    db: AsyncSession = Depends(get_session),
+    user: models.User = Depends(require_user),
+) -> DashboardShopProfileResponse:
+    _ = user
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"field": "name", "message": "店舗名を入力してください。"},
+        )
+    area = (payload.area or "").strip()
+    if not area:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"field": "area", "message": "エリアを入力してください。"},
+        )
+
+    try:
+        price_min = max(0, int(payload.price_min))
+        price_max = max(0, int(payload.price_max))
+    except Exception as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"field": "price", "message": "料金は数値で入力してください。"},
+        ) from exc
+
+    if price_max < price_min:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"field": "price_max", "message": "料金の上限は下限以上に設定してください。"},
+        )
+
+    service_type = (payload.service_type or "store").strip() if payload.service_type else "store"
+    if service_type not in {"store", "dispatch"}:
+        service_type = "store"
+
+    service_tags = _sanitize_service_tags(payload.service_tags)
+    photos = _sanitize_photos(payload.photos)
+
+    contact_json: Dict[str, Any] = {}
+    if payload.contact is not None:
+        _update_contact_json(contact_json, payload.contact)
+
+    if payload.description:
+        contact_json["description"] = payload.description.strip()
+    if payload.catch_copy:
+        contact_json["catch_copy"] = payload.catch_copy.strip()
+    if payload.address:
+        contact_json["address"] = payload.address.strip()
+
+    if service_tags:
+        contact_json["service_tags"] = service_tags
+
+    if "store_name" not in contact_json or not contact_json.get("store_name"):
+        contact_json["store_name"] = name
+
+    profile = models.Profile(
+        name=name,
+        area=area,
+        price_min=price_min,
+        price_max=price_max,
+        service_type=service_type,
+        bust_tag=DEFAULT_BUST_TAG,
+        status="draft",
+    )
+    profile.body_tags = service_tags or []
+    profile.photos = photos or []
+    profile.contact_json = contact_json
+
+    db.add(profile)
+    await db.flush()
+    await db.commit()
+    await db.refresh(profile)
+
+    await _reindex_profile(db, profile)
+    return _serialize_profile(profile)
 
 
 def _menus_to_contact_json(items: List[DashboardShopMenu]) -> List[Dict[str, Any]]:
