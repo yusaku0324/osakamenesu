@@ -81,7 +81,7 @@ class FakeSession:
         self.refreshed = True
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_update_profile_changes_status(monkeypatch):
     now = datetime.now(UTC)
     profile = models.Profile(
