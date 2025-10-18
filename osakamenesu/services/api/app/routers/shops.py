@@ -28,6 +28,7 @@ from ..schemas import (
     ReviewItem,
     ReviewListResponse,
     ReviewSummary,
+    ShopStaffPreview,
     ShopDetail,
     ShopSearchResponse,
     ShopSummary,
@@ -536,7 +537,7 @@ def _normalize_promotions(*sources: Any) -> List[Promotion]:
 
 
 def _normalize_staff_preview(raw: Any) -> List[schemas.ShopStaffPreview]:
-    previews: List[schemas.ShopStaffPreview] = []
+    previews: List[ShopStaffPreview] = []
     if not isinstance(raw, list):
         return previews
     for entry in raw:
@@ -554,7 +555,7 @@ def _normalize_staff_preview(raw: Any) -> List[schemas.ShopStaffPreview]:
         else:
             specialties = []
         previews.append(
-            schemas.ShopStaffPreview(
+            ShopStaffPreview(
                 id=(str(entry.get("id")).strip() or None) if entry.get("id") is not None else None,
                 name=name,
                 alias=(str(entry.get("alias")).strip() or None) if entry.get("alias") is not None else None,
