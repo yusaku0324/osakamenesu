@@ -38,7 +38,7 @@ export function TherapistCard({ hit }: { hit: TherapistHit }) {
   const shopHref = buildShopHref(hit)
 
   return (
-    <Card className="h-full" interactive>
+    <Card className="h-full" interactive data-testid="therapist-card">
       <Link href={staffHref} className="block focus:outline-none group">
         <div className="relative h-48 overflow-hidden rounded-t-card bg-neutral-surfaceAlt">
           {hit.avatarUrl ? (
