@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock, call
 import sys
 import time
 
+from selenium.webdriver import Chrome
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -27,7 +28,8 @@ class TestComposerFunctions(unittest.TestCase):
     """Test Twitter composer functions"""
     
     def setUp(self):
-        self.mock_driver = MagicMock(spec=WebDriver)
+        # Use Chrome spec so execute_cdp_cmd is available in mocks
+        self.mock_driver = MagicMock(spec=Chrome)
         self.mock_element = MagicMock(spec=WebElement)
         
         self.mock_driver.Keys = MagicMock()

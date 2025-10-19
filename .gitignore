@@ -35,6 +35,8 @@ recruit_posts.log
 # pytest
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 
 # IDE
@@ -54,9 +56,6 @@ debug/
 videos/
 *.png
 *.json
-!osakamenesu/apps/web/package.json
-!osakamenesu/apps/web/package-lock.json
-!osakamenesu/apps/web/tsconfig.json
 *.yaml.bak
 *.pyc
 *.db
@@ -91,5 +90,8 @@ kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
 kakeru-mirror/
 kakeru-filtered-new/ # 同様に、これも追加しておくと安全です
 credentials.json
+
+.config/
+.gcloud-config/
 
 staging.sql
