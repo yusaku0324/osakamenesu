@@ -43,6 +43,7 @@ bot/config/accounts.yaml に proxy_label: jp_pool と同じ user_agent を記入
 bash# IP が Decodo の 92.113.*.* になるか確認
 python tools/check_proxy.py jp_pool
 開発環境セットアップ
+開発フローやコーディング規約の詳細は [Repository Guidelines](AGENTS.md) を参照してください。
 リポジトリクリーンアップ手順
 開発環境をクリーンに保つために、以下の手順を実行してください：
 bash# .gitignoreに無視すべきファイルパターンが含まれていることを確認
