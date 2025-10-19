@@ -90,8 +90,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: osakamenesu/apps/web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -112,8 +110,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: osakamenesu/apps/web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
