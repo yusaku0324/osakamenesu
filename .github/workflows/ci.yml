@@ -271,14 +271,49 @@ jobs:
           CLOUD_RUN_REGION: ${{ secrets.CLOUD_RUN_REGION }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           NEXT_PUBLIC_OSAKAMENESU_API_BASE: ${{ secrets.NEXT_PUBLIC_OSAKAMENESU_API_BASE }}
+          NEXT_PUBLIC_API_BASE: ${{ secrets.NEXT_PUBLIC_API_BASE }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          OSAKAMENESU_API_INTERNAL_BASE_SECRET: ${{ secrets.OSAKAMENESU_API_INTERNAL_BASE }}
+          API_INTERNAL_BASE_SECRET: ${{ secrets.API_INTERNAL_BASE }}
           ADMIN_BASIC_USER: ${{ secrets.ADMIN_BASIC_USER }}
           ADMIN_BASIC_PASS: ${{ secrets.ADMIN_BASIC_PASS }}
           WEB_IMAGE: ${{ env.WEB_IMAGE }}
         run: |
+          set -euo pipefail
+          if [ -z "${NEXT_PUBLIC_SITE_URL}" ]; then
+            echo "::error::NEXT_PUBLIC_SITE_URL secret is required for web deployment." >&2
+            exit 1
+          fi
+          if [ -z "${NEXT_PUBLIC_OSAKAMENESU_API_BASE}" ]; then
+            echo "::error::NEXT_PUBLIC_OSAKAMENESU_API_BASE secret is required for web deployment." >&2
+            exit 1
+          fi
+
+          PUBLIC_BASE="${NEXT_PUBLIC_API_BASE:-${NEXT_PUBLIC_OSAKAMENESU_API_BASE}}"
+          INTERNAL_BASE="${OSAKAMENESU_API_INTERNAL_BASE_SECRET:-${NEXT_PUBLIC_OSAKAMENESU_API_BASE}}"
+          API_INTERNAL_BASE_EFFECTIVE="${API_INTERNAL_BASE_SECRET:-${INTERNAL_BASE}}"
+
+          declare -a ENV_VARS=(
+            "ADMIN_API_KEY=${ADMIN_API_KEY}"
+            "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}"
+            "NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE}"
+            "NEXT_PUBLIC_API_BASE=${PUBLIC_BASE}"
+            "ADMIN_BASIC_USER=${ADMIN_BASIC_USER}"
+            "ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
+          )
+
+          if [ -n "${INTERNAL_BASE}" ]; then
+            ENV_VARS+=("OSAKAMENESU_API_INTERNAL_BASE=${INTERNAL_BASE}")
+          fi
+          if [ -n "${API_INTERNAL_BASE_EFFECTIVE}" ]; then
+            ENV_VARS+=("API_INTERNAL_BASE=${API_INTERNAL_BASE_EFFECTIVE}")
+          fi
+
+          ENV_STRING=$(IFS=,; printf '%s' "${ENV_VARS[*]}")
           gcloud run services update "$CLOUD_RUN_WEB_SERVICE" \
             --region "$CLOUD_RUN_REGION" \
             --image "$WEB_IMAGE" \
-            --update-env-vars "ADMIN_API_KEY=${ADMIN_API_KEY},NEXT_PUBLIC_OSAKAMENESU_API_BASE=${NEXT_PUBLIC_OSAKAMENESU_API_BASE},ADMIN_BASIC_USER=${ADMIN_BASIC_USER},ADMIN_BASIC_PASS=${ADMIN_BASIC_PASS}"
+            --update-env-vars "$ENV_STRING"
 
       - name: Seed staging data with sample profiles
         env:
