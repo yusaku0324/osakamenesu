@@ -127,6 +127,7 @@ function createRequestInit(
     method,
     cache: options?.cache ?? 'no-store',
     signal: options?.signal,
+    credentials: options?.cookieHeader ? 'omit' : 'include',
   }
 
   if (Object.keys(headers).length) {
