@@ -14,6 +14,7 @@ from .routers.auth import router as auth_router
 from .routers.favorites import router as favorites_router
 from .routers.dashboard_notifications import router as dashboard_notifications_router
 from .routers.dashboard_shops import router as dashboard_shops_router
+from .routers.dashboard_therapists import router as dashboard_therapists_router
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .db import get_session
@@ -117,3 +118,4 @@ app.include_router(auth_router)
 app.include_router(favorites_router)
 app.include_router(dashboard_notifications_router)
 app.include_router(dashboard_shops_router)
+app.include_router(dashboard_therapists_router)

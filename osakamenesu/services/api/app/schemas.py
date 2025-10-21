@@ -516,6 +516,7 @@ class ShopContentUpdate(BaseModel):
 
 ReviewStatusLiteral = Literal['pending', 'published', 'rejected']
 DiaryStatusLiteral = Literal['mod', 'published', 'hidden']
+TherapistStatusLiteral = Literal['draft', 'published', 'archived']
 
 
 class BulkReviewInput(BaseModel):
@@ -727,3 +728,59 @@ class DashboardShopProfileUpdatePayload(BaseModel):
     menus: Optional[List[DashboardShopMenu]] = None
     staff: Optional[List[DashboardShopStaff]] = None
     status: Optional[str] = None
+
+
+class DashboardTherapistSummary(BaseModel):
+    id: UUID
+    name: str
+    alias: Optional[str] = None
+    headline: Optional[str] = None
+    status: TherapistStatusLiteral
+    display_order: int
+    is_booking_enabled: bool
+    updated_at: datetime
+    photo_urls: List[str] = Field(default_factory=list)
+    specialties: List[str] = Field(default_factory=list)
+
+
+class DashboardTherapistDetail(DashboardTherapistSummary):
+    biography: Optional[str] = None
+    qualifications: List[str] = Field(default_factory=list)
+    experience_years: Optional[int] = None
+    created_at: datetime
+
+
+class DashboardTherapistCreatePayload(BaseModel):
+    name: str
+    alias: Optional[str] = None
+    headline: Optional[str] = None
+    biography: Optional[str] = None
+    specialties: Optional[List[str]] = None
+    qualifications: Optional[List[str]] = None
+    experience_years: Optional[int] = Field(default=None, ge=0)
+    photo_urls: Optional[List[str]] = None
+    is_booking_enabled: Optional[bool] = True
+
+
+class DashboardTherapistUpdatePayload(BaseModel):
+    updated_at: datetime
+    name: Optional[str] = None
+    alias: Optional[str] = None
+    headline: Optional[str] = None
+    biography: Optional[str] = None
+    specialties: Optional[List[str]] = None
+    qualifications: Optional[List[str]] = None
+    experience_years: Optional[int] = Field(default=None, ge=0)
+    photo_urls: Optional[List[str]] = None
+    status: Optional[TherapistStatusLiteral] = None
+    is_booking_enabled: Optional[bool] = None
+    display_order: Optional[int] = None
+
+
+class DashboardTherapistReorderItem(BaseModel):
+    therapist_id: UUID
+    display_order: int = Field(ge=0)
+
+
+class DashboardTherapistReorderPayload(BaseModel):
+    items: List[DashboardTherapistReorderItem]
