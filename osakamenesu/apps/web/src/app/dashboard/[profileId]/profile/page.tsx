@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 
 import { ShopProfileEditor } from './ShopProfileEditor'
 import { fetchDashboardShopProfile } from '@/lib/dashboard-shops'
+import { fetchDashboardTherapists } from '@/lib/dashboard-therapists'
 
 function cookieHeaderFromStore(): string | undefined {
   const store = cookies()
@@ -69,6 +70,25 @@ export default async function DashboardShopProfilePage({
 
   const data = result.data
 
+  const therapistResult = await fetchDashboardTherapists(params.profileId, { cookieHeader })
+
+  const initialTherapists = therapistResult.status === 'success' ? therapistResult.data : []
+  const initialTherapistsError = (() => {
+    switch (therapistResult.status) {
+      case 'success':
+        return null
+      case 'unauthorized':
+      case 'forbidden':
+        return 'セラピスト情報を読み込む権限がありません。権限を確認してください。'
+      case 'not_found':
+        return 'セラピスト情報が見つかりませんでした。'
+      case 'error':
+        return therapistResult.message
+      default:
+        return null
+    }
+  })()
+
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-6 py-12">
       <header className="space-y-2">
@@ -79,7 +99,12 @@ export default async function DashboardShopProfilePage({
         </p>
       </header>
 
-      <ShopProfileEditor profileId={data.id} initialData={data} />
+      <ShopProfileEditor
+        profileId={data.id}
+        initialData={data}
+        initialTherapists={initialTherapists}
+        initialTherapistsError={initialTherapistsError}
+      />
 
       <Link
         href={`/dashboard/${data.id}`}

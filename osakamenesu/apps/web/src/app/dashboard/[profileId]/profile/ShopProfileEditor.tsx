@@ -9,14 +9,17 @@ import {
   DashboardShopMenu,
   DashboardShopProfile,
   DashboardShopProfileUpdatePayload,
-  DashboardShopStaff,
   DashboardShopServiceType,
   updateDashboardShopProfile,
 } from '@/lib/dashboard-shops'
+import { DashboardTherapistSummary } from '@/lib/dashboard-therapists'
+import { TherapistManager } from './TherapistManager'
 
 type Props = {
   profileId: string
   initialData: DashboardShopProfile
+  initialTherapists: DashboardTherapistSummary[]
+  initialTherapistsError?: string | null
 }
 
 type MenuDraft = {
@@ -26,14 +29,6 @@ type MenuDraft = {
   duration: string
   description: string
   tags: string
-}
-
-type StaffDraft = {
-  id?: string
-  name: string
-  alias: string
-  headline: string
-  specialties: string
 }
 
 type ContactDraft = {
@@ -65,16 +60,6 @@ function toMenuDraft(menu: DashboardShopMenu): MenuDraft {
   }
 }
 
-function toStaffDraft(staff: DashboardShopStaff): StaffDraft {
-  return {
-    id: staff.id,
-    name: staff.name ?? '',
-    alias: staff.alias ?? '',
-    headline: staff.headline ?? '',
-    specialties: Array.isArray(staff.specialties) ? staff.specialties.join(', ') : '',
-  }
-}
-
 function normalizeContact(contact: DashboardShopContact | null | undefined): ContactDraft {
   return {
     phone: contact?.phone ?? '',
@@ -88,11 +73,12 @@ function emptyMenu(): MenuDraft {
   return { name: '', price: '', duration: '', description: '', tags: '' }
 }
 
-function emptyStaff(): StaffDraft {
-  return { name: '', alias: '', headline: '', specialties: '' }
-}
-
-export function ShopProfileEditor({ profileId, initialData }: Props) {
+export function ShopProfileEditor({
+  profileId,
+  initialData,
+  initialTherapists,
+  initialTherapistsError = null,
+}: Props) {
   const { toasts, push, remove } = useToast()
   const [snapshot, setSnapshot] = useState<DashboardShopProfile>(initialData)
   const [name, setName] = useState(initialData.name ?? '')
@@ -123,11 +109,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
     initialData.menus && initialData.menus.length
       ? initialData.menus.map(toMenuDraft)
       : [emptyMenu()]
-  )
-  const [staff, setStaff] = useState<StaffDraft[]>(
-    initialData.staff && initialData.staff.length
-      ? initialData.staff.map(toStaffDraft)
-      : [emptyStaff()]
   )
   const [updatedAt, setUpdatedAt] = useState<string | undefined>(initialData.updated_at)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
@@ -163,7 +144,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
     setContact(normalizeContact(data.contact))
     setPhotos(data.photos && data.photos.length ? [...data.photos] : [''])
     setMenus(data.menus && data.menus.length ? data.menus.map(toMenuDraft) : [emptyMenu()])
-    setStaff(data.staff && data.staff.length ? data.staff.map(toStaffDraft) : [emptyStaff()])
     setUpdatedAt(data.updated_at)
   }
 
@@ -217,26 +197,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
     setMenus((prev) => prev.filter((_, idx) => idx !== index))
   }
 
-  function handleStaffChange<T extends keyof StaffDraft>(
-    index: number,
-    key: T,
-    value: StaffDraft[T]
-  ) {
-    setStaff((prev) => {
-      const next = [...prev]
-      next[index] = { ...next[index], [key]: value }
-      return next
-    })
-  }
-
-  function handleAddStaff() {
-    setStaff((prev) => [...prev, emptyStaff()])
-  }
-
-  function handleRemoveStaff(index: number) {
-    setStaff((prev) => prev.filter((_, idx) => idx !== index))
-  }
-
   function toInt(value: string, fallback: number) {
     const trimmed = value.trim()
     if (!trimmed) return fallback
@@ -285,19 +245,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
       }))
       .filter((menu) => menu.name.length > 0)
 
-    const normalizedStaff: DashboardShopStaff[] = staff
-      .map((member) => ({
-        id: member.id,
-        name: member.name.trim(),
-        alias: member.alias.trim() || undefined,
-        headline: member.headline.trim() || undefined,
-        specialties: member.specialties
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-      }))
-      .filter((member) => member.name.length > 0)
-
     const photoList = photos.map((url) => url.trim()).filter(Boolean)
 
     const normalizedContactValues: ContactDraft = {
@@ -331,7 +278,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
       photos: photoList,
       contact: contactPayload,
       menus: normalizedMenus,
-      staff: normalizedStaff,
       status: statusValue,
     }
 
@@ -808,87 +754,6 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
           </div>
         </Card>
 
-        <Card className="space-y-6 p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold">在籍スタッフ</h2>
-              <p className="text-sm text-neutral-600">
-                在籍セラピストの情報を登録してください。名前が空の場合は保存時に除外されます。
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddStaff}
-              className="inline-flex items-center rounded-md border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
-            >
-              スタッフを追加
-            </button>
-          </div>
-          <div className="space-y-4">
-            {staff.map((member, index) => (
-              <div
-                key={member.id ?? `staff-${index}`}
-                className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-neutral-700">スタッフ {index + 1}</p>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveStaff(index)}
-                    className="text-xs font-medium text-neutral-500 transition hover:text-red-500"
-                  >
-                    削除
-                  </button>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-neutral-600">名前</span>
-                    <input
-                      value={member.name}
-                      onChange={(event) => handleStaffChange(index, 'name', event.target.value)}
-                      className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                      placeholder="例: 綾瀬 さくら"
-                    />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-neutral-600">ニックネーム</span>
-                    <input
-                      value={member.alias}
-                      onChange={(event) => handleStaffChange(index, 'alias', event.target.value)}
-                      className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                      placeholder="例: さくらちゃん"
-                    />
-                  </label>
-                </div>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-neutral-600">紹介文</span>
-                  <textarea
-                    value={member.headline}
-                    onChange={(event) =>
-                      handleStaffChange(index, 'headline', event.target.value)
-                    }
-                    className="h-24 w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                    placeholder="得意な施術や人柄などを記載してください。"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-neutral-600">
-                    得意な施術 (カンマ区切り)
-                  </span>
-                  <input
-                    value={member.specialties}
-                    onChange={(event) =>
-                      handleStaffChange(index, 'specialties', event.target.value)
-                    }
-                    className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                    placeholder="例: ドライヘッドスパ, バリ式オイル"
-                  />
-                </label>
-              </div>
-            ))}
-          </div>
-        </Card>
-
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1 text-sm text-neutral-500">
             <p>プロフィール ID: {profileId}</p>
@@ -913,6 +778,13 @@ export function ShopProfileEditor({ profileId, initialData }: Props) {
           </div>
         </div>
       </form>
+
+      <TherapistManager
+        profileId={profileId}
+        initialItems={initialTherapists}
+        initialError={initialTherapistsError ?? null}
+        onToast={push}
+      />
     </div>
   )
 }

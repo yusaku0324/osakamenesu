@@ -17,6 +17,7 @@ OutlinkKind = Enum('line', 'tel', 'web', name='outlink_kind')
 ReportTarget = Enum('profile', 'diary', name='report_target')
 ReportStatus = Enum('open', 'closed', name='report_status')
 ReviewStatus = Enum('pending', 'published', 'rejected', name='review_status')
+TherapistStatus = Enum('draft', 'published', 'archived', name='therapist_status')
 # bust_tag はマイグレーション互換性のため VARCHAR で運用
 ServiceType = Enum('store', 'dispatch', name='service_type')
 ReservationStatus = Enum('pending', 'confirmed', 'declined', 'cancelled', 'expired', name='reservation_status')
@@ -63,6 +64,33 @@ class Profile(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    therapists: Mapped[list["Therapist"]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        order_by="Therapist.display_order",
+    )
+
+
+class Therapist(Base):
+    __tablename__ = 'therapists'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('profiles.id', ondelete='CASCADE'), index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    alias: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    biography: Mapped[str | None] = mapped_column(Text, nullable=True)
+    specialties: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)))
+    qualifications: Mapped[list[str] | None] = mapped_column(ARRAY(String(128)))
+    experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    photo_urls: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    display_order: Mapped[int] = mapped_column(Integer, server_default="0", index=True)
+    status: Mapped[str] = mapped_column(TherapistStatus, default='draft', nullable=False, index=True)
+    is_booking_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+
+    profile: Mapped[Profile] = relationship(back_populates='therapists')
 
 
 class User(Base):
