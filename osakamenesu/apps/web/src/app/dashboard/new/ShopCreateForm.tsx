@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 
 import { ToastContainer, useToast } from '@/components/useToast'
 import { Badge } from '@/components/ui/Badge'
-import { createDashboardShopProfile, DashboardShopProfileCreatePayload, DashboardShopServiceType } from '@/lib/dashboard-shops'
-
-type Props = {
-  cookieHeader?: string
-}
+import {
+  createDashboardShopProfile,
+  type DashboardShopProfileCreatePayload,
+  type DashboardShopServiceType,
+} from '@/lib/dashboard-shops'
 
 const SERVICE_TYPE_OPTIONS: { label: string; value: DashboardShopServiceType }[] = [
   { label: '店舗型', value: 'store' },
@@ -30,7 +30,7 @@ function parseMultiline(input: string): string[] {
     .filter(Boolean)
 }
 
-export function ShopCreateForm({ cookieHeader }: Props) {
+export function ShopCreateForm() {
   const router = useRouter()
   const { toasts, push, remove } = useToast()
 
@@ -99,7 +99,7 @@ export function ShopCreateForm({ cookieHeader }: Props) {
 
     setIsSubmitting(true)
     try {
-      const result = await createDashboardShopProfile(payload, { cookieHeader })
+      const result = await createDashboardShopProfile(payload)
       switch (result.status) {
         case 'success': {
           push('success', '店舗を作成しました')
