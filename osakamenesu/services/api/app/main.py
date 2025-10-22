@@ -66,9 +66,20 @@ _outlink_rate = create_rate_limiter(
     redis_error_cooldown=settings.rate_limit_redis_error_cooldown,
 )
 
+_cors_origins = {
+    settings.api_origin,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+}
+
+if settings.site_base_url:
+    origin = settings.site_base_url.rstrip("/")
+    if origin:
+        _cors_origins.add(origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.api_origin, "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=list(_cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
