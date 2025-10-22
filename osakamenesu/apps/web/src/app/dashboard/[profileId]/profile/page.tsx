@@ -30,11 +30,19 @@ export default async function DashboardShopProfilePage({
       <main className="mx-auto max-w-4xl space-y-6 px-6 py-12">
         <h1 className="text-2xl font-semibold">店舗プロフィール編集</h1>
         <p className="text-neutral-600">
-          店舗プロフィールを編集するにはログインが必要です。マジックリンクでログインした後、このページを再読み込みしてください。
+          店舗プロフィールを編集するにはログインが必要です。ログインページからマジックリンクを送信し、メール経由でログインした後にこのページを再読み込みしてください。
         </p>
-        <Link href="/" className="inline-flex rounded bg-black px-4 py-2 text-sm font-medium text-white">
-          トップへ戻る
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/login" className="inline-flex rounded bg-black px-4 py-2 text-sm font-medium text-white">
+            ログインページへ
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex rounded border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+          >
+            トップへ戻る
+          </Link>
+        </div>
       </main>
     )
   }
