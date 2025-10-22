@@ -28,6 +28,10 @@ class _DummySettings:
         self.notify_line_endpoint = None
         self.escalation_pending_threshold_minutes = 30
         self.escalation_check_interval_minutes = 5
+        self.notify_from_email = None
+        self.mail_api_key = "test-mail-key"
+        self.mail_from_address = "no-reply@example.com"
+        self.mail_provider_base_url = "https://api.resend.com"
         self.site_base_url = None
 
 

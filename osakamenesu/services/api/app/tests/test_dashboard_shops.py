@@ -51,6 +51,10 @@ class _DummySettings:
         self.slack_webhook_url = None
         self.notify_email_endpoint = None
         self.notify_line_endpoint = None
+        self.notify_from_email = None
+        self.mail_api_key = "test-mail-key"
+        self.mail_from_address = "no-reply@example.com"
+        self.mail_provider_base_url = "https://api.resend.com"
         self.escalation_pending_threshold_minutes = 30
         self.escalation_check_interval_minutes = 5
         self.site_base_url = None
