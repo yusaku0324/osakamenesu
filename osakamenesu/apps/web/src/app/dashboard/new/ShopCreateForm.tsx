@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -10,6 +11,10 @@ import {
   type DashboardShopProfileCreatePayload,
   type DashboardShopServiceType,
 } from '@/lib/dashboard-shops'
+
+type Props = {
+  isAuthenticated: boolean
+}
 
 const SERVICE_TYPE_OPTIONS: { label: string; value: DashboardShopServiceType }[] = [
   { label: '店舗型', value: 'store' },
@@ -30,7 +35,7 @@ function parseMultiline(input: string): string[] {
     .filter(Boolean)
 }
 
-export function ShopCreateForm() {
+export function ShopCreateForm({ isAuthenticated }: Props) {
   const router = useRouter()
   const { toasts, push, remove } = useToast()
 
@@ -107,7 +112,7 @@ export function ShopCreateForm() {
           return
         }
         case 'unauthorized':
-          setFormError('ログインが必要です。マジックリンクで再度ログインしてください。')
+          setFormError('ログインが必要です。ログインページからマジックリンクを再送信してください。')
           break
         case 'forbidden':
           setFormError('店舗を作成する権限がありません。運営までお問い合わせください。')
@@ -124,6 +129,23 @@ export function ShopCreateForm() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-4">
+        <ToastContainer toasts={toasts} onDismiss={remove} />
+        <p className="text-sm text-neutral-600">
+          店舗を作成するにはログインが必要です。ログインページからマジックリンクを送信し、メール経由でログインした後にこのページを再読み込みしてください。
+        </p>
+        <Link
+          href="/dashboard/login"
+          className="inline-flex items-center justify-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-700"
+        >
+          ログインページへ
+        </Link>
+      </div>
+    )
   }
 
   return (
