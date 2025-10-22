@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +40,9 @@ def _ensure_datetime(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _extract_contact(contact_json: Dict[str, Any] | None) -> Optional[DashboardShopContact]:
+def _extract_contact(
+    contact_json: Dict[str, Any] | None
+) -> Optional[DashboardShopContact]:
     if not isinstance(contact_json, dict):
         return None
     phone = contact_json.get("phone") or contact_json.get("tel")
@@ -152,7 +155,9 @@ def _serialize_profile(profile: models.Profile) -> DashboardShopProfileResponse:
 async def _get_profile(db: AsyncSession, profile_id: UUID) -> models.Profile:
     profile = await db.get(models.Profile, profile_id)
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found"
+        )
     return profile
 
 
@@ -161,16 +166,52 @@ async def _reindex_profile(db: AsyncSession, profile: models.Profile) -> None:
     availability_count = await db.execute(
         select(func.count())
         .select_from(models.Availability)
-        .where(models.Availability.profile_id == profile.id, models.Availability.date == today)
+        .where(
+            models.Availability.profile_id == profile.id,
+            models.Availability.date == today,
+        )
     )
     has_today = (availability_count.scalar_one() or 0) > 0
-    outlinks_result = await db.execute(select(models.Outlink).where(models.Outlink.profile_id == profile.id))
+    outlinks_result = await db.execute(
+        select(models.Outlink).where(models.Outlink.profile_id == profile.id)
+    )
     outlinks = list(outlinks_result.scalars().all())
-    doc = build_profile_doc(profile, today=has_today, tag_score=0.0, ctr7d=0.0, outlinks=outlinks)
+    doc = build_profile_doc(
+        profile, today=has_today, tag_score=0.0, ctr7d=0.0, outlinks=outlinks
+    )
     try:
         index_profile(doc)
     except Exception:
         # Meili の一時的な失敗で編集を失敗扱いにしない
+        pass
+
+
+async def _record_change(
+    request: Request,
+    db: AsyncSession,
+    target_id: UUID | None,
+    action: str,
+    before: Any,
+    after: Any,
+) -> None:
+    try:
+        ip = request.headers.get("x-forwarded-for") or (
+            request.client.host if request.client else ""
+        )
+        ip_hash = hashlib.sha256(ip.encode("utf-8")).hexdigest() if ip else None
+        log = models.AdminChangeLog(
+            target_type="shop_profile",
+            target_id=target_id,
+            action=action,
+            before_json=before,
+            after_json=after,
+            admin_key_hash=None,
+            ip_hash=ip_hash,
+        )
+        db.add(log)
+        await db.commit()
+    except Exception:
+        # 監査ログが失敗しても処理自体は成功扱いにする
         pass
 
 
@@ -180,7 +221,15 @@ def _update_contact_json(
 ) -> None:
     if contact is None:
         # 空指定の場合は既存のキーをクリア
-        for key in ["phone", "tel", "line_id", "line", "website_url", "web", "reservation_form_url"]:
+        for key in [
+            "phone",
+            "tel",
+            "line_id",
+            "line",
+            "website_url",
+            "web",
+            "reservation_form_url",
+        ]:
             contact_json.pop(key, None)
         return
 
@@ -238,8 +287,13 @@ def _sanitize_photos(raw: Optional[List[str]]) -> List[str]:
     return photos
 
 
-@router.post("/shops", response_model=DashboardShopProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/shops",
+    response_model=DashboardShopProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_dashboard_shop_profile(
+    request: Request,
     payload: DashboardShopProfileCreatePayload,
     db: AsyncSession = Depends(get_session),
     user: models.User = Depends(require_user),
@@ -270,10 +324,15 @@ async def create_dashboard_shop_profile(
     if price_max < price_min:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"field": "price_max", "message": "料金の上限は下限以上に設定してください。"},
+            detail={
+                "field": "price_max",
+                "message": "料金の上限は下限以上に設定してください。",
+            },
         )
 
-    service_type = (payload.service_type or "store").strip() if payload.service_type else "store"
+    service_type = (
+        (payload.service_type or "store").strip() if payload.service_type else "store"
+    )
     if service_type not in {"store", "dispatch"}:
         service_type = "store"
 
@@ -316,7 +375,9 @@ async def create_dashboard_shop_profile(
     await db.refresh(profile)
 
     await _reindex_profile(db, profile)
-    return _serialize_profile(profile)
+    response = _serialize_profile(profile)
+    await _record_change(request, db, profile.id, "create", None, response.model_dump())
+    return response
 
 
 def _menus_to_contact_json(items: List[DashboardShopMenu]) -> List[Dict[str, Any]]:
@@ -330,7 +391,11 @@ def _menus_to_contact_json(items: List[DashboardShopMenu]) -> List[Dict[str, Any
         except Exception:
             price = 0
         try:
-            duration = int(item.duration_minutes) if item.duration_minutes is not None else None
+            duration = (
+                int(item.duration_minutes)
+                if item.duration_minutes is not None
+                else None
+            )
         except Exception:
             duration = None
         tags = [tag.strip() for tag in (item.tags or []) if tag.strip()]
@@ -380,6 +445,7 @@ async def get_dashboard_shop_profile(
 
 @router.put("/shops/{profile_id}/profile", response_model=DashboardShopProfileResponse)
 async def update_dashboard_shop_profile(
+    request: Request,
     profile_id: UUID,
     payload: DashboardShopProfileUpdatePayload,
     db: AsyncSession = Depends(get_session),
@@ -396,6 +462,8 @@ async def update_dashboard_shop_profile(
             status_code=status.HTTP_409_CONFLICT,
             detail={"current": current.model_dump()},
         )
+
+    before_state = _serialize_profile(profile).model_dump()
 
     if payload.name is not None:
         normalized = payload.name.strip()
@@ -414,16 +482,25 @@ async def update_dashboard_shop_profile(
         profile.price_max = max(0, int(payload.price_max))
 
     if payload.service_type is not None:
-        profile.service_type = payload.service_type if payload.service_type in {"store", "dispatch"} else "store"
+        profile.service_type = (
+            payload.service_type
+            if payload.service_type in {"store", "dispatch"}
+            else "store"
+        )
 
     if payload.slug is not None:
         candidate = slugify(payload.slug) if payload.slug else None
         if candidate:
             conflict = await db.execute(
-                select(models.Profile.id).where(models.Profile.slug == candidate, models.Profile.id != profile.id)
+                select(models.Profile.id).where(
+                    models.Profile.slug == candidate, models.Profile.id != profile.id
+                )
             )
             if conflict.scalar_one_or_none():
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="slug_already_exists")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="slug_already_exists",
+                )
             profile.slug = candidate
         else:
             profile.slug = None
@@ -484,4 +561,8 @@ async def update_dashboard_shop_profile(
     await db.refresh(profile)
     await _reindex_profile(db, profile)
 
-    return _serialize_profile(profile)
+    response = _serialize_profile(profile)
+    await _record_change(
+        request, db, profile.id, "update", before_state, response.model_dump()
+    )
+    return response

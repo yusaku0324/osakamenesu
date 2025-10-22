@@ -28,6 +28,7 @@ class _DummySettings:
         self.notify_line_endpoint = None
         self.escalation_pending_threshold_minutes = 30
         self.escalation_check_interval_minutes = 5
+        self.site_base_url = None
 
 
 dummy_settings_module.Settings = _DummySettings  # type: ignore[attr-defined]
