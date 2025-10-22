@@ -53,6 +53,7 @@ class _DummySettings:
         self.notify_line_endpoint = None
         self.escalation_pending_threshold_minutes = 30
         self.escalation_check_interval_minutes = 5
+        self.site_base_url = None
 
 
 dummy_settings_module.Settings = _DummySettings  # type: ignore[attr-defined]
@@ -68,6 +69,7 @@ class FakeSession:
         self._profile = profile
         self.committed = False
         self.refreshed = False
+        self.logs: list[models.AdminChangeLog] = []
 
     async def get(self, model, pk):  # type: ignore[override]
         if model is models.Profile and pk == self._profile.id:
@@ -79,6 +81,16 @@ class FakeSession:
 
     async def refresh(self, instance):  # type: ignore[override]
         self.refreshed = True
+
+    def add(self, instance):  # type: ignore[override]
+        if isinstance(instance, models.AdminChangeLog):
+            self.logs.append(instance)
+
+
+class FakeRequest:
+    def __init__(self) -> None:
+        self.headers: dict[str, str] = {}
+        self.client = SimpleNamespace(host="127.0.0.1")
 
 
 @pytest.mark.anyio
@@ -110,6 +122,7 @@ async def test_update_profile_changes_status(monkeypatch):
     )
 
     response = await dashboard_shops.update_dashboard_shop_profile(
+        FakeRequest(),
         profile.id,
         payload,
         db=session,
@@ -120,3 +133,4 @@ async def test_update_profile_changes_status(monkeypatch):
     assert response.status == "published"
     assert session.committed is True
     assert session.refreshed is True
+    assert any(log.action == "update" for log in session.logs)
