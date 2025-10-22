@@ -16,6 +16,7 @@ from ..deps import require_user
 from ..schemas import AuthRequestLink, AuthVerifyRequest, UserPublic
 from ..settings import settings
 from ..utils.auth import generate_token, hash_token, magic_link_expiry, session_expiry
+from ..utils.email import MailNotConfiguredError, send_email_async
 
 logger = logging.getLogger("app.auth")
 
@@ -131,7 +132,44 @@ async def request_link(
     if settings.auth_magic_link_debug:
         _log_magic_link(email, link)
 
-    return {"ok": True}
+    mail_sent = False
+    mail_message: str | None = None
+    subject = "[大阪メンズエステ] ログインリンクのお知らせ"
+    html_body = f"""
+        <p>大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。</p>
+        <p>下記のリンクを開くとログインが完了します。リンクの有効期限は約 {settings.auth_magic_link_expire_minutes} 分です。</p>
+        <p><a href="{link}">{link}</a></p>
+        <p>このメールに心当たりがない場合は破棄してください。</p>
+        <p>--<br/>大阪メンズエステ運営</p>
+    """
+    text_body = (
+        "大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。\n\n"
+        f"下記のリンクを開くとログインが完了します（有効期限: 約 {settings.auth_magic_link_expire_minutes} 分）。\n"
+        f"{link}\n\n"
+        "このメールに心当たりがない場合は破棄してください。\n\n"
+        "--\n大阪メンズエステ運営"
+    )
+
+    try:
+        await send_email_async(
+            to=email,
+            subject=subject,
+            html=html_body,
+            text=text_body,
+            tags=["auth", "magic_link"],
+        )
+        mail_sent = True
+    except MailNotConfiguredError:
+        mail_message = "mail_not_configured"
+        logger.warning("mail_not_configured", extra={"email": email})
+    except Exception:
+        mail_message = "mail_send_failed"
+        logger.exception("magic_link_mail_failed", extra={"email": email})
+
+    response: dict[str, object] = {"ok": True, "mail_sent": mail_sent}
+    if mail_message:
+        response["message"] = mail_message
+    return response
 
 
 @router.post("/verify")
