@@ -103,8 +103,8 @@ async def get_optional_site_user(
     if user:
         return user
 
-    # Fallback for environments whereサイト用Cookieがまだ設定されていない場合
-    if settings.site_session_cookie_name == settings.dashboard_session_cookie_name:
+    if settings.site_session_cookie_name != settings.dashboard_session_cookie_name:
+        # Allow legacy dashboard cookie to authenticate until new site cookie is issued
         return await _get_session_user(
             request,
             db,
@@ -137,14 +137,14 @@ async def get_optional_user(
     if user:
         return user
 
-    if settings.site_session_cookie_name == settings.dashboard_session_cookie_name:
-        return None
-
-    return await _get_session_user(
-        request,
-        db,
-        cookie_name=settings.dashboard_session_cookie_name,
-    )
+    if settings.site_session_cookie_name != settings.dashboard_session_cookie_name:
+        # Fallback to dashboard cookie so existing sessions remain valid after rename
+        return await _get_session_user(
+            request,
+            db,
+            cookie_name=settings.dashboard_session_cookie_name,
+        )
+    return None
 
 
 async def require_user(user: Optional[models.User] = Depends(get_optional_user)) -> models.User:
