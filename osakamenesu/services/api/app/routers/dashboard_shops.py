@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models
 from ..db import get_session
-from ..deps import require_user
+from ..deps import require_dashboard_user
 from ..meili import index_profile
 from ..schemas import (
     DashboardShopContact,
@@ -296,7 +296,7 @@ async def create_dashboard_shop_profile(
     request: Request,
     payload: DashboardShopProfileCreatePayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardShopProfileResponse:
     _ = user
     name = (payload.name or "").strip()
@@ -436,7 +436,7 @@ def _staff_to_contact_json(items: List[DashboardShopStaff]) -> List[Dict[str, An
 async def get_dashboard_shop_profile(
     profile_id: UUID,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardShopProfileResponse:
     _ = user
     profile = await _get_profile(db, profile_id)
@@ -449,7 +449,7 @@ async def update_dashboard_shop_profile(
     profile_id: UUID,
     payload: DashboardShopProfileUpdatePayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardShopProfileResponse:
     _ = user
     profile = await _get_profile(db, profile_id)

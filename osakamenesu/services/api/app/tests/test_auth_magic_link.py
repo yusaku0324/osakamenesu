@@ -54,23 +54,31 @@ class _DummySettings:
         self.auth_magic_link_expire_minutes = 15
         self.auth_magic_link_rate_limit = 5
         self.auth_session_ttl_days = 30
-        self.auth_session_cookie_name = "osakamenesu_session"
+        self.dashboard_session_cookie_name = "osakamenesu_session"
+        self.site_session_cookie_name = "osakamenesu_session"
         self.auth_session_cookie_secure = False
         self.auth_session_cookie_domain = None
         self.auth_magic_link_redirect_path = "/auth/complete"
         self.auth_magic_link_debug = True
         self.site_base_url = "https://example.com"
 
+    @property
+    def auth_session_cookie_name(self) -> str:
+        return self.dashboard_session_cookie_name
+
 
 dummy_settings_module.Settings = _DummySettings  # type: ignore[attr-defined]
 dummy_settings_module.settings = _DummySettings()
-sys.modules.setdefault("app.settings", dummy_settings_module)
+sys.modules["app.settings"] = dummy_settings_module
 
 from app import models  # type: ignore  # noqa: E402
 from app.routers import auth  # type: ignore  # noqa: E402
 from app.schemas import AuthRequestLink  # type: ignore  # noqa: E402
 from app.settings import settings  # type: ignore  # noqa: E402
+import app.utils.auth as auth_utils  # type: ignore  # noqa: E402
 from app.utils.email import MailNotConfiguredError  # type: ignore  # noqa: E402
+
+auth_utils.settings = settings
 
 
 def _request(headers: Optional[Dict[str, str]] = None) -> Request:

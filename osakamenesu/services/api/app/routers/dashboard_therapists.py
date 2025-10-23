@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models
 from ..db import get_session
-from ..deps import require_user
+from ..deps import require_dashboard_user
 from ..schemas import (
     DashboardTherapistCreatePayload,
     DashboardTherapistDetail,
@@ -188,7 +188,7 @@ async def _record_change(
 async def list_dashboard_therapists(
     profile_id: UUID,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> list[DashboardTherapistSummary]:
     _ = user
     await _get_profile(db, profile_id)
@@ -215,7 +215,7 @@ async def create_dashboard_therapist(
     profile_id: UUID,
     payload: DashboardTherapistCreatePayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardTherapistDetail:
     _ = user
     profile = await _get_profile(db, profile_id)
@@ -278,7 +278,7 @@ async def get_dashboard_therapist(
     profile_id: UUID,
     therapist_id: UUID,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardTherapistDetail:
     _ = user
     await _get_profile(db, profile_id)
@@ -298,7 +298,7 @@ async def update_dashboard_therapist(
     therapist_id: UUID,
     payload: DashboardTherapistUpdatePayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> DashboardTherapistDetail:
     _ = user
     profile = await _get_profile(db, profile_id)
@@ -379,7 +379,7 @@ async def delete_dashboard_therapist(
     profile_id: UUID,
     therapist_id: UUID,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> Response:
     _ = user
     profile = await _get_profile(db, profile_id)
@@ -407,7 +407,7 @@ async def reorder_dashboard_therapists(
     profile_id: UUID,
     payload: DashboardTherapistReorderPayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> list[DashboardTherapistSummary]:
     _ = user
     profile = await _get_profile(db, profile_id)

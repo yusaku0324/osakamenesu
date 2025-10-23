@@ -61,6 +61,8 @@ class _DummySettings:
         self.mail_api_key = "test-mail-key"
         self.mail_from_address = "no-reply@example.com"
         self.mail_provider_base_url = "https://api.resend.com"
+        self.dashboard_session_cookie_name = "osakamenesu_session"
+        self.site_session_cookie_name = "osakamenesu_session"
         self.escalation_pending_threshold_minutes = 30
         self.escalation_check_interval_minutes = 5
 

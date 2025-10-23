@@ -24,7 +24,14 @@ class Settings(BaseSettings):
     auth_magic_link_expire_minutes: int = 15
     auth_magic_link_rate_limit: int = 5
     auth_session_ttl_days: int = 30
-    auth_session_cookie_name: str = "osakamenesu_session"
+    dashboard_session_cookie_name: str = Field(
+        default="osakamenesu_session",
+        validation_alias=AliasChoices("AUTH_SESSION_COOKIE_NAME", "DASHBOARD_SESSION_COOKIE_NAME"),
+    )
+    site_session_cookie_name: str = Field(
+        default="osakamenesu_session",
+        validation_alias=AliasChoices("SITE_SESSION_COOKIE_NAME", "USER_SESSION_COOKIE_NAME"),
+    )
     auth_session_cookie_secure: bool = False
     auth_session_cookie_domain: str | None = None
     auth_magic_link_redirect_path: str = "/auth/complete"
@@ -37,6 +44,11 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_prefix = ""
+
+    @property
+    def auth_session_cookie_name(self) -> str:
+        """Backward compatibility accessor for dashboard session cookie name."""
+        return self.dashboard_session_cookie_name
 
 
 settings = Settings()
