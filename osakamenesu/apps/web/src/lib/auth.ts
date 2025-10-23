@@ -5,8 +5,8 @@ export type MagicLinkRequestResult =
   | { status: 'rate_limited' }
   | { status: 'error'; message: string }
 
-export async function requestDashboardMagicLink(email: string): Promise<MagicLinkRequestResult> {
-  const payload = JSON.stringify({ email: email.trim() })
+async function requestMagicLink(email: string, scope: 'dashboard' | 'site'): Promise<MagicLinkRequestResult> {
+  const payload = JSON.stringify({ email: email.trim(), scope })
   let lastError: string | null = null
 
   for (const base of resolveApiBases()) {
@@ -47,4 +47,12 @@ export async function requestDashboardMagicLink(email: string): Promise<MagicLin
     status: 'error',
     message: lastError ?? 'ログインリンクの送信に失敗しました。時間をおいて再度お試しください。',
   }
+}
+
+export async function requestDashboardMagicLink(email: string): Promise<MagicLinkRequestResult> {
+  return requestMagicLink(email, 'dashboard')
+}
+
+export async function requestSiteMagicLink(email: string): Promise<MagicLinkRequestResult> {
+  return requestMagicLink(email, 'site')
 }
