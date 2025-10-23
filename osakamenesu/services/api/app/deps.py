@@ -125,6 +125,29 @@ async def require_site_user(user: Optional[models.User] = Depends(get_optional_s
     return user
 
 
-# Backwards compatibility aliases
-get_optional_user = get_optional_dashboard_user
-require_user = require_dashboard_user
+async def get_optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+) -> Optional[models.User]:
+    user = await _get_session_user(
+        request,
+        db,
+        cookie_name=settings.site_session_cookie_name,
+    )
+    if user:
+        return user
+
+    if settings.site_session_cookie_name == settings.dashboard_session_cookie_name:
+        return None
+
+    return await _get_session_user(
+        request,
+        db,
+        cookie_name=settings.dashboard_session_cookie_name,
+    )
+
+
+async def require_user(user: Optional[models.User] = Depends(get_optional_user)) -> models.User:
+    if not user:
+        raise HTTPException(status_code=401, detail="not_authenticated")
+    return user
