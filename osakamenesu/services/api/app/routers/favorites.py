@@ -8,7 +8,7 @@ from uuid import UUID
 
 from .. import models
 from ..db import get_session
-from ..deps import require_user
+from ..deps import require_site_user
 from ..schemas import FavoriteCreate, FavoriteItem
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 @router.get("", response_model=list[FavoriteItem])
 async def list_favorites(
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_site_user),
     db: AsyncSession = Depends(get_session),
 ):
     stmt = (
@@ -32,7 +32,7 @@ async def list_favorites(
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=FavoriteItem)
 async def add_favorite(
     payload: FavoriteCreate,
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_site_user),
     db: AsyncSession = Depends(get_session),
 ):
     profile = await db.get(models.Profile, payload.shop_id)
@@ -60,7 +60,7 @@ async def add_favorite(
 @router.delete("/{shop_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_favorite(
     shop_id: UUID,
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_site_user),
     db: AsyncSession = Depends(get_session),
 ):
     stmt = (

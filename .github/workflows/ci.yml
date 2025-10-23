@@ -39,7 +39,9 @@ jobs:
       meilisearch:
         image: getmeili/meilisearch:v1.7
         env:
-          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
+          MEILI_MASTER_KEY: dev_meili_master_key
+          MEILI_ENV: development
+          MEILI_NO_ANALYTICS: "true"
         ports:
           - 7700:7700
     defaults:
@@ -47,6 +49,9 @@ jobs:
         working-directory: osakamenesu/services/api
     env:
       DATABASE_URL: postgresql+asyncpg://app:app@127.0.0.1:5432/osaka_menesu
+      MEILI_HOST: http://127.0.0.1:7700
+      MEILI_MASTER_KEY: dev_meili_master_key
+      ANYIO_BACKEND: asyncio
     steps:
       - uses: actions/checkout@v4
 
@@ -75,8 +80,6 @@ jobs:
           exit 1
 
       - name: Wait for Meilisearch
-        env:
-          MEILI_HOST: http://127.0.0.1:7700
         run: |
           for i in {1..30}; do
             if curl -fsS "$MEILI_HOST/health" >/dev/null; then
@@ -92,9 +95,6 @@ jobs:
         run: alembic upgrade head
 
       - name: Run pytest
-        env:
-          MEILI_HOST: http://127.0.0.1:7700
-          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
         run: pytest app/tests -q
 
   integration-test:

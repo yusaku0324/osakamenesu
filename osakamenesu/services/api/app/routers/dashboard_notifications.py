@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import models, schemas
 from ..db import get_session
-from ..deps import require_user
+from ..deps import require_dashboard_user
 
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -157,7 +157,7 @@ def _ensure_datetime(value: datetime) -> datetime:
 async def get_dashboard_notifications(
     profile_id: UUID,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> schemas.DashboardNotificationSettingsResponse:
     _ = user
     profile = await _ensure_profile(db, profile_id)
@@ -170,7 +170,7 @@ async def update_dashboard_notifications(
     profile_id: UUID,
     payload: schemas.DashboardNotificationSettingsUpdatePayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> schemas.DashboardNotificationSettingsResponse:
     profile = await _ensure_profile(db, profile_id)
     setting = await _get_or_create_setting(db, profile)
@@ -201,7 +201,7 @@ async def test_dashboard_notifications(
     profile_id: UUID,
     payload: schemas.DashboardNotificationSettingsTestPayload,
     db: AsyncSession = Depends(get_session),
-    user: models.User = Depends(require_user),
+    user: models.User = Depends(require_dashboard_user),
 ) -> Response:
     _ = user
     profile = await _ensure_profile(db, profile_id)

@@ -1,5 +1,7 @@
 import os
 import sys
+import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -54,23 +56,32 @@ class _DummySettings:
         self.auth_magic_link_expire_minutes = 15
         self.auth_magic_link_rate_limit = 5
         self.auth_session_ttl_days = 30
-        self.auth_session_cookie_name = "osakamenesu_session"
+        self.dashboard_session_cookie_name = "osakamenesu_session"
+        self.site_session_cookie_name = "osakamenesu_session"
         self.auth_session_cookie_secure = False
         self.auth_session_cookie_domain = None
         self.auth_magic_link_redirect_path = "/auth/complete"
         self.auth_magic_link_debug = True
         self.site_base_url = "https://example.com"
 
+    @property
+    def auth_session_cookie_name(self) -> str:
+        return self.dashboard_session_cookie_name
+
 
 dummy_settings_module.Settings = _DummySettings  # type: ignore[attr-defined]
 dummy_settings_module.settings = _DummySettings()
-sys.modules.setdefault("app.settings", dummy_settings_module)
+sys.modules["app.settings"] = dummy_settings_module
 
 from app import models  # type: ignore  # noqa: E402
 from app.routers import auth  # type: ignore  # noqa: E402
-from app.schemas import AuthRequestLink  # type: ignore  # noqa: E402
+from app.schemas import AuthRequestLink, AuthVerifyRequest  # type: ignore  # noqa: E402
 from app.settings import settings  # type: ignore  # noqa: E402
+import app.utils.auth as auth_utils  # type: ignore  # noqa: E402
+from app.utils.auth import hash_token  # type: ignore  # noqa: E402
 from app.utils.email import MailNotConfiguredError  # type: ignore  # noqa: E402
+
+auth_utils.settings = settings
 
 
 def _request(headers: Optional[Dict[str, str]] = None) -> Request:
@@ -90,8 +101,10 @@ def _request(headers: Optional[Dict[str, str]] = None) -> Request:
 
 class FakeSession:
     def __init__(self) -> None:
-        self.users: Dict[str, models.User] = {}
+        self.users_by_email: Dict[str, models.User] = {}
+        self.users_by_id: Dict[str, models.User] = {}
         self.tokens: list[models.UserAuthToken] = []
+        self.sessions: list[models.UserSession] = []
 
     async def execute(self, stmt):  # type: ignore[override]
         if stmt.column_descriptions and stmt.column_descriptions[0]["name"] == "User":
@@ -99,7 +112,7 @@ class FakeSession:
             for criterion in getattr(stmt, "_where_criteria", []):
                 if getattr(criterion.left, "name", None) == "email":
                     email = getattr(criterion.right, "value", None)
-            user = self.users.get(email or "")
+            user = self.users_by_email.get(email or "")
 
             class Result:
                 def __init__(self, value):
@@ -109,6 +122,22 @@ class FakeSession:
                     return self._value
 
             return Result(user)
+        if stmt.column_descriptions and stmt.column_descriptions[0]["name"] == "UserAuthToken":
+            token_hash = None
+            for criterion in getattr(stmt, "_where_criteria", []):
+                if getattr(criterion.left, "name", None) == "token_hash":
+                    token_hash = getattr(criterion.right, "value", None)
+
+            match = next((t for t in self.tokens if t.token_hash == token_hash), None)
+
+            class TokenResult:
+                def __init__(self, value):
+                    self._value = value
+
+                def scalar_one_or_none(self):
+                    return self._value
+
+            return TokenResult(match)
         raw_columns = getattr(stmt, "_raw_columns", [])
         if raw_columns:
             first = raw_columns[0]
@@ -129,14 +158,18 @@ class FakeSession:
 
     async def get(self, model, pk):  # type: ignore[override]
         if model is models.User:
-            return self.users.get(pk)
+            return self.users_by_id.get(str(pk))
         return None
 
     def add(self, obj: Any) -> None:
         if isinstance(obj, models.User):
-            self.users[obj.email] = obj
+            self.users_by_email[obj.email] = obj
+            if obj.id is not None:
+                self.users_by_id[str(obj.id)] = obj
         if isinstance(obj, models.UserAuthToken):
             self.tokens.append(obj)
+        if isinstance(obj, models.UserSession):
+            self.sessions.append(obj)
 
     async def flush(self, _=None):  # type: ignore[override]
         return None
@@ -198,3 +231,55 @@ async def test_request_link_handles_missing_mail_config(monkeypatch):
     assert response["ok"] is True
     assert response["mail_sent"] is False
     assert response.get("message") == "mail_not_configured"
+
+
+@pytest.mark.anyio
+async def test_verify_sets_both_cookies():
+    original_dashboard = settings.dashboard_session_cookie_name
+    original_site = settings.site_session_cookie_name
+    settings.dashboard_session_cookie_name = "dash_cookie"
+    settings.site_session_cookie_name = "site_cookie"
+
+    session = FakeSession()
+    user = models.User(id=uuid.uuid4(), email="verify@example.com")
+    session.add(user)
+
+    raw_token = "verify-token"
+    token_hash = hash_token(raw_token)
+    auth_token = models.UserAuthToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) + timedelta(minutes=15),
+        ip_hash=None,
+        user_agent=None,
+    )
+    session.add(auth_token)
+
+    payload = AuthVerifyRequest(token=raw_token)
+    try:
+        response = await auth.verify_token(payload, _request(), db=session)
+    finally:
+        settings.dashboard_session_cookie_name = original_dashboard
+        settings.site_session_cookie_name = original_site
+
+    cookies = response.headers.getlist("set-cookie")
+    assert any("dash_cookie" in cookie for cookie in cookies)
+    assert any("site_cookie" in cookie for cookie in cookies)
+
+
+@pytest.mark.anyio
+async def test_logout_deletes_both_cookies():
+    original_dashboard = settings.dashboard_session_cookie_name
+    original_site = settings.site_session_cookie_name
+    settings.dashboard_session_cookie_name = "dash_cookie"
+    settings.site_session_cookie_name = "site_cookie"
+
+    try:
+        response = await auth.logout(_request(), db=FakeSession())
+    finally:
+        settings.dashboard_session_cookie_name = original_dashboard
+        settings.site_session_cookie_name = original_site
+
+    cookies = [cookie.lower() for cookie in response.headers.getlist("set-cookie")]
+    assert any("dash_cookie=" in cookie and "max-age=0" in cookie for cookie in cookies)
+    assert any("site_cookie=" in cookie and "max-age=0" in cookie for cookie in cookies)
