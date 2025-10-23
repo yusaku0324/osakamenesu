@@ -63,31 +63,48 @@ async def _enforce_rate_limit(user_id: Optional[UUID], ip_hash: Optional[str], d
         raise HTTPException(status_code=429, detail="too_many_requests")
 
 
+def _session_cookie_names() -> list[str]:
+    names: list[str] = []
+    for name in [
+        getattr(settings, "dashboard_session_cookie_name", None),
+        getattr(settings, "site_session_cookie_name", None),
+    ]:
+        if name and name not in names:
+            names.append(name)
+    # Backwards compatibility
+    legacy = getattr(settings, "auth_session_cookie_name", None)
+    if legacy and legacy not in names:
+        names.append(legacy)
+    return names
+
+
 def _set_session_cookie(response: Response, token: str) -> None:
     max_age = settings.auth_session_ttl_days * 24 * 60 * 60
-    response.set_cookie(
-        key=settings.auth_session_cookie_name,
-        value=token,
-        max_age=max_age,
-        httponly=True,
-        secure=settings.auth_session_cookie_secure,
-        samesite="lax",
-        domain=settings.auth_session_cookie_domain,
-        path="/",
-    )
+    for name in _session_cookie_names():
+        response.set_cookie(
+            key=name,
+            value=token,
+            max_age=max_age,
+            httponly=True,
+            secure=settings.auth_session_cookie_secure,
+            samesite="lax",
+            domain=settings.auth_session_cookie_domain,
+            path="/",
+        )
 
 
 async def _get_session_from_cookie(request: Request, db: AsyncSession) -> Optional[models.UserSession]:
-    cookie_name = settings.auth_session_cookie_name
-    if not cookie_name:
-        return None
-    raw_token = request.cookies.get(cookie_name)
-    if not raw_token:
-        return None
-    token_hash = hash_token(raw_token)
-    stmt = select(models.UserSession).where(models.UserSession.token_hash == token_hash)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    for cookie_name in _session_cookie_names():
+        raw_token = request.cookies.get(cookie_name)
+        if not raw_token:
+            continue
+        token_hash = hash_token(raw_token)
+        stmt = select(models.UserSession).where(models.UserSession.token_hash == token_hash)
+        result = await db.execute(stmt)
+        session = result.scalar_one_or_none()
+        if session:
+            return session
+    return None
 
 
 def _log_magic_link(email: str, link: str) -> None:
@@ -230,9 +247,9 @@ async def logout(request: Request, db: AsyncSession = Depends(get_session)):
         await db.commit()
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    if settings.auth_session_cookie_name:
+    for name in _session_cookie_names():
         response.delete_cookie(
-            key=settings.auth_session_cookie_name,
+            key=name,
             domain=settings.auth_session_cookie_domain,
             path="/",
         )
