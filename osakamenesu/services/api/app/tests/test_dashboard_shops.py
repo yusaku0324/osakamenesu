@@ -93,6 +93,30 @@ class FakeSession:
             self.logs.append(instance)
 
 
+class FakeListSession:
+    def __init__(self, profiles: list[models.Profile]) -> None:
+        self._profiles = profiles
+
+    async def execute(self, stmt):  # type: ignore[override]
+        _ = stmt
+
+        class _ScalarResult:
+            def __init__(self, profiles: list[models.Profile]) -> None:
+                self._profiles = profiles
+
+            def all(self) -> list[models.Profile]:
+                return self._profiles
+
+        class _Result:
+            def __init__(self, profiles: list[models.Profile]) -> None:
+                self._profiles = profiles
+
+            def scalars(self) -> _ScalarResult:
+                return _ScalarResult(self._profiles)
+
+        return _Result(self._profiles)
+
+
 class FakeRequest:
     def __init__(self) -> None:
         self.headers: dict[str, str] = {}
@@ -140,3 +164,45 @@ async def test_update_profile_changes_status(monkeypatch):
     assert session.committed is True
     assert session.refreshed is True
     assert any(log.action == "update" for log in session.logs)
+
+
+@pytest.mark.anyio
+async def test_list_dashboard_shops_returns_profiles():
+    now = datetime.now(UTC)
+    profile_a = models.Profile(
+        id=uuid.uuid4(),
+        name="店舗A",
+        area="梅田",
+        price_min=9000,
+        price_max=16000,
+        bust_tag="C",
+        service_type="store",
+        contact_json={"store_name": "店舗A"},
+        status="published",
+        created_at=now,
+        updated_at=now,
+    )
+    profile_b = models.Profile(
+        id=uuid.uuid4(),
+        name="店舗B",
+        area="難波",
+        price_min=8000,
+        price_max=14000,
+        bust_tag="D",
+        service_type="store",
+        contact_json={"store_name": "店舗B"},
+        status="draft",
+        created_at=now,
+        updated_at=now,
+    )
+    session = FakeListSession([profile_a, profile_b])
+
+    response = await dashboard_shops.list_dashboard_shops(
+        limit=5,
+        db=session,
+        user=SimpleNamespace(id=uuid.uuid4()),
+    )
+
+    assert len(response.shops) == 2
+    assert response.shops[0].id == profile_a.id
+    assert response.shops[1].id == profile_b.id

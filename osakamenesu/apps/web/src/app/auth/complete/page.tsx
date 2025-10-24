@@ -50,8 +50,36 @@ function AuthCompleteContent() {
 
         const data = await res.json().catch(() => undefined)
         const scope = (data && typeof data.scope === 'string' ? data.scope : 'site') as 'dashboard' | 'site'
-        const redirectTarget = scope === 'dashboard' ? '/dashboard/favorites' : '/'
-        const redirectLabel = scope === 'dashboard' ? 'ダッシュボード' : 'トップ'
+
+        let redirectTarget = '/'
+        let redirectLabel = 'トップ'
+
+        if (scope === 'dashboard') {
+          redirectLabel = 'ダッシュボード'
+          redirectTarget = '/dashboard'
+
+          try {
+            const listRes = await fetch('/api/dashboard/shops?limit=1', {
+              method: 'GET',
+              credentials: 'include',
+              cache: 'no-store',
+            })
+
+            if (listRes.ok) {
+              const listData = await listRes.json().catch(() => undefined) as { shops?: Array<{ id?: string }> } | undefined
+              const first = listData?.shops?.[0]
+              if (first?.id) {
+                redirectTarget = `/dashboard/${first.id}`
+              } else {
+                redirectTarget = '/dashboard/new'
+              }
+            } else if (listRes.status === 404) {
+              redirectTarget = '/dashboard/new'
+            }
+          } catch {
+            redirectTarget = '/dashboard/new'
+          }
+        }
 
         if (active) {
           setStatus('success')
