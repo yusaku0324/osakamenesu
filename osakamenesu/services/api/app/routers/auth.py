@@ -63,24 +63,35 @@ async def _enforce_rate_limit(user_id: Optional[UUID], ip_hash: Optional[str], d
         raise HTTPException(status_code=429, detail="too_many_requests")
 
 
-def _session_cookie_names() -> list[str]:
+def _session_cookie_names(scope: str | None = None) -> list[str]:
     names: list[str] = []
-    for name in [
-        getattr(settings, "dashboard_session_cookie_name", None),
-        getattr(settings, "site_session_cookie_name", None),
-    ]:
+    if scope == "dashboard":
+        candidates = [getattr(settings, "dashboard_session_cookie_name", None)]
+    elif scope == "site":
+        candidates = [getattr(settings, "site_session_cookie_name", None)]
+    else:
+        candidates = [
+            getattr(settings, "dashboard_session_cookie_name", None),
+            getattr(settings, "site_session_cookie_name", None),
+        ]
+
+    for name in candidates:
         if name and name not in names:
             names.append(name)
-    # Backwards compatibility
-    legacy = getattr(settings, "auth_session_cookie_name", None)
-    if legacy and legacy not in names:
-        names.append(legacy)
+    # Backwards compatibility for legacy dashboard cookie name
+    if scope in (None, "dashboard"):
+        legacy = getattr(settings, "auth_session_cookie_name", None)
+        if legacy and legacy not in names:
+            names.append(legacy)
     return names
 
 
-def _set_session_cookie(response: Response, token: str) -> None:
+def _set_session_cookie(response: Response, token: str, *, scope: str | None = None) -> None:
     max_age = settings.auth_session_ttl_days * 24 * 60 * 60
-    for name in _session_cookie_names():
+    names = _session_cookie_names(scope)
+    if not names:
+        names = _session_cookie_names()
+    for name in names:
         response.set_cookie(
             key=name,
             value=token,
@@ -118,6 +129,7 @@ async def request_link(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ):
+    scope = payload.scope or "dashboard"
     email = payload.email.strip().lower()
     stmt = select(models.User).where(models.User.email == email)
     result = await db.execute(stmt)
@@ -139,6 +151,7 @@ async def request_link(
         user_id=user.id,
         token_hash=token_hash,
         expires_at=magic_link_expiry(),
+        scope=scope,
         ip_hash=ip_hash,
         user_agent=request.headers.get("user-agent"),
     )
@@ -151,21 +164,38 @@ async def request_link(
 
     mail_sent = False
     mail_message: str | None = None
-    subject = "[大阪メンズエステ] ログインリンクのお知らせ"
-    html_body = f"""
-        <p>大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。</p>
-        <p>下記のリンクを開くとログインが完了します。リンクの有効期限は約 {settings.auth_magic_link_expire_minutes} 分です。</p>
-        <p><a href="{link}">{link}</a></p>
-        <p>このメールに心当たりがない場合は破棄してください。</p>
-        <p>--<br/>大阪メンズエステ運営</p>
-    """
-    text_body = (
-        "大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。\n\n"
-        f"下記のリンクを開くとログインが完了します（有効期限: 約 {settings.auth_magic_link_expire_minutes} 分）。\n"
-        f"{link}\n\n"
-        "このメールに心当たりがない場合は破棄してください。\n\n"
-        "--\n大阪メンズエステ運営"
-    )
+    if scope == "site":
+        subject = "[大阪メンズエステ] ログインリンクのお知らせ"
+        html_body = f"""
+            <p>大阪メンズエステサイトへのログインリクエストを受け付けました。</p>
+            <p>下記のリンクを開くとログインが完了します。リンクの有効期限は約 {settings.auth_magic_link_expire_minutes} 分です。</p>
+            <p><a href="{link}">{link}</a></p>
+            <p>このメールに心当たりがない場合は破棄してください。</p>
+            <p>--<br/>大阪メンズエステ運営</p>
+        """
+        text_body = (
+            "大阪メンズエステサイトへのログインリクエストを受け付けました。\n\n"
+            f"下記のリンクを開くとログインが完了します（有効期限: 約 {settings.auth_magic_link_expire_minutes} 分）。\n"
+            f"{link}\n\n"
+            "このメールに心当たりがない場合は破棄してください。\n\n"
+            "--\n大阪メンズエステ運営"
+        )
+    else:
+        subject = "[大阪メンズエステ] ログインリンクのお知らせ"
+        html_body = f"""
+            <p>大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。</p>
+            <p>下記のリンクを開くとログインが完了します。リンクの有効期限は約 {settings.auth_magic_link_expire_minutes} 分です。</p>
+            <p><a href="{link}">{link}</a></p>
+            <p>このメールに心当たりがない場合は破棄してください。</p>
+            <p>--<br/>大阪メンズエステ運営</p>
+        """
+        text_body = (
+            "大阪メンズエステ ダッシュボードへのログインリクエストを受け付けました。\n\n"
+            f"下記のリンクを開くとログインが完了します（有効期限: 約 {settings.auth_magic_link_expire_minutes} 分）。\n"
+            f"{link}\n\n"
+            "このメールに心当たりがない場合は破棄してください。\n\n"
+            "--\n大阪メンズエステ運営"
+        )
 
     try:
         await send_email_async(
@@ -214,11 +244,13 @@ async def verify_token(
 
         session_token = generate_token()
         session_hash = hash_token(session_token)
+        session_scope = getattr(auth_token, "scope", "dashboard") or "dashboard"
         session = models.UserSession(
             user_id=user.id,
             token_hash=session_hash,
             issued_at=now,
             expires_at=session_expiry(now),
+            scope=session_scope,
             ip_hash=_hash_ip(_ip_from_request(request)),
             user_agent=request.headers.get("user-agent"),
         )
@@ -229,8 +261,8 @@ async def verify_token(
 
         await db.commit()
 
-        response = JSONResponse({"ok": True})
-        _set_session_cookie(response, session_token)
+        response = JSONResponse({"ok": True, "scope": session_scope})
+        _set_session_cookie(response, session_token, scope=session_scope)
         return response
     except HTTPException:
         raise

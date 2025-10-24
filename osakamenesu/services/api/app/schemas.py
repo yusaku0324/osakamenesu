@@ -6,6 +6,7 @@ from datetime import datetime, date
 
 class AuthRequestLink(BaseModel):
     email: EmailStr
+    scope: Literal["dashboard", "site"] = "dashboard"
 
 
 class AuthVerifyRequest(BaseModel):

@@ -206,6 +206,26 @@ async def test_request_link_sends_email(monkeypatch):
     assert sent["to"] == "test@example.com"
     assert "html" in sent
     assert session.tokens  # token persisted
+    assert session.tokens[0].scope == "dashboard"
+
+
+@pytest.mark.anyio
+async def test_request_link_site_scope_sets_scope(monkeypatch):
+    sent: Dict[str, Any] = {}
+
+    async def _fake_send_email_async(**kwargs: Any) -> Dict[str, Any]:
+        sent.update(kwargs)
+        return {"id": "email-id"}
+
+    monkeypatch.setattr(auth, "send_email_async", _fake_send_email_async)
+    session = FakeSession()
+    payload = AuthRequestLink(email="site@example.com", scope="site")
+
+    response = await auth.request_link(payload, _request(), db=session)
+
+    assert response["ok"] is True
+    assert session.tokens
+    assert session.tokens[0].scope == "site"
 
 
 @pytest.mark.anyio
@@ -234,7 +254,7 @@ async def test_request_link_handles_missing_mail_config(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_verify_sets_both_cookies():
+async def test_verify_dashboard_scope_sets_dashboard_cookie():
     original_dashboard = settings.dashboard_session_cookie_name
     original_site = settings.site_session_cookie_name
     settings.dashboard_session_cookie_name = "dash_cookie"
@@ -261,10 +281,44 @@ async def test_verify_sets_both_cookies():
     finally:
         settings.dashboard_session_cookie_name = original_dashboard
         settings.site_session_cookie_name = original_site
-
     cookies = response.headers.getlist("set-cookie")
     assert any("dash_cookie" in cookie for cookie in cookies)
+    assert not any("site_cookie" in cookie for cookie in cookies)
+
+
+@pytest.mark.anyio
+async def test_verify_site_scope_sets_site_cookie_only():
+    original_dashboard = settings.dashboard_session_cookie_name
+    original_site = settings.site_session_cookie_name
+    settings.dashboard_session_cookie_name = "dash_cookie"
+    settings.site_session_cookie_name = "site_cookie"
+
+    session = FakeSession()
+    user = models.User(id=uuid.uuid4(), email="verify@example.com")
+    session.add(user)
+
+    raw_token = "verify-token"
+    token_hash = hash_token(raw_token)
+    auth_token = models.UserAuthToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) + timedelta(minutes=15),
+        ip_hash=None,
+        user_agent=None,
+        scope="site",
+    )
+    session.add(auth_token)
+
+    payload = AuthVerifyRequest(token=raw_token)
+    try:
+        response = await auth.verify_token(payload, _request(), db=session)
+    finally:
+        settings.dashboard_session_cookie_name = original_dashboard
+        settings.site_session_cookie_name = original_site
+
+    cookies = response.headers.getlist("set-cookie")
     assert any("site_cookie" in cookie for cookie in cookies)
+    assert not any("dash_cookie" in cookie for cookie in cookies)
 
 
 @pytest.mark.anyio

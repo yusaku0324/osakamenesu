@@ -124,6 +124,7 @@ class UserAuthToken(Base):
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    scope: Mapped[str] = mapped_column(String(32), default='dashboard', nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
     user: Mapped[User] = relationship(back_populates='auth_tokens')
@@ -140,6 +141,7 @@ class UserSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    scope: Mapped[str] = mapped_column(String(32), default='dashboard', nullable=False)
 
     user: Mapped[User] = relationship(back_populates='sessions')
 

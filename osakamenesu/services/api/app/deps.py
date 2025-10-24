@@ -17,6 +17,7 @@ async def _get_session_user(
     db: AsyncSession,
     *,
     cookie_name: str | None,
+    scope: str | None = None,
 ) -> Optional[models.User]:
     if not cookie_name:
         return None
@@ -29,6 +30,9 @@ async def _get_session_user(
     result = await db.execute(stmt)
     session = result.scalar_one_or_none()
     if not session:
+        return None
+
+    if scope and getattr(session, "scope", scope) != scope:
         return None
 
     now = datetime.now(UTC)
@@ -88,6 +92,7 @@ async def get_optional_dashboard_user(
         request,
         db,
         cookie_name=settings.dashboard_session_cookie_name,
+        scope="dashboard",
     )
 
 
@@ -99,6 +104,7 @@ async def get_optional_site_user(
         request,
         db,
         cookie_name=settings.site_session_cookie_name,
+        scope="site",
     )
     if user:
         return user
@@ -109,6 +115,7 @@ async def get_optional_site_user(
             request,
             db,
             cookie_name=settings.dashboard_session_cookie_name,
+            scope="dashboard",
         )
     return None
 
@@ -133,6 +140,7 @@ async def get_optional_user(
         request,
         db,
         cookie_name=settings.site_session_cookie_name,
+        scope="site",
     )
     if user:
         return user
@@ -143,6 +151,7 @@ async def get_optional_user(
             request,
             db,
             cookie_name=settings.dashboard_session_cookie_name,
+            scope="dashboard",
         )
     return None
 

@@ -48,10 +48,15 @@ function AuthCompleteContent() {
           throw new Error(detail || '認証に失敗しました。リンクが古い可能性があります。')
         }
 
+        const data = await res.json().catch(() => undefined)
+        const scope = (data && typeof data.scope === 'string' ? data.scope : 'site') as 'dashboard' | 'site'
+        const redirectTarget = scope === 'dashboard' ? '/dashboard' : '/'
+        const redirectLabel = scope === 'dashboard' ? 'ダッシュボード' : 'トップ'
+
         if (active) {
           setStatus('success')
-          setMessage('ログインが完了しました。数秒後にトップへ移動します。')
-          redirectTimer = setTimeout(() => router.replace('/'), 2500)
+          setMessage(`ログインが完了しました。数秒後に${redirectLabel}へ移動します。`)
+          redirectTimer = setTimeout(() => router.replace(redirectTarget), 2500)
         }
       } catch (err) {
         if (active) {
