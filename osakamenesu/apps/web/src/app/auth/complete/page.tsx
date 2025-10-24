@@ -50,7 +50,7 @@ function AuthCompleteContent() {
 
         const data = await res.json().catch(() => undefined)
         const scope = (data && typeof data.scope === 'string' ? data.scope : 'site') as 'dashboard' | 'site'
-        const redirectTarget = scope === 'dashboard' ? '/dashboard' : '/'
+        const redirectTarget = scope === 'dashboard' ? '/dashboard/favorites' : '/'
         const redirectLabel = scope === 'dashboard' ? 'ダッシュボード' : 'トップ'
 
         if (active) {
