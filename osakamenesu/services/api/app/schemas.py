@@ -677,6 +677,18 @@ class DashboardShopStaff(BaseModel):
     specialties: List[str] = Field(default_factory=list)
 
 
+class DashboardShopSummaryItem(BaseModel):
+    id: UUID
+    name: str
+    area: Optional[str] = None
+    status: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
+class DashboardShopListResponse(BaseModel):
+    shops: List[DashboardShopSummaryItem] = Field(default_factory=list)
+
+
 class DashboardShopProfileResponse(BaseModel):
     id: UUID
     slug: Optional[str] = None

@@ -16,6 +16,8 @@ from ..db import get_session
 from ..deps import require_dashboard_user
 from ..meili import index_profile
 from ..schemas import (
+    DashboardShopListResponse,
+    DashboardShopSummaryItem,
     DashboardShopContact,
     DashboardShopMenu,
     DashboardShopProfileCreatePayload,
@@ -213,6 +215,34 @@ async def _record_change(
     except Exception:
         # 監査ログが失敗しても処理自体は成功扱いにする
         pass
+
+
+@router.get("/shops", response_model=DashboardShopListResponse)
+async def list_dashboard_shops(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_session),
+    user: models.User = Depends(require_dashboard_user),
+) -> DashboardShopListResponse:
+    _ = user
+    limit_value = max(1, min(limit, 100))
+    stmt = (
+        select(models.Profile)
+        .order_by(models.Profile.updated_at.desc())
+        .limit(limit_value)
+    )
+    result = await db.execute(stmt)
+    profiles = list(result.scalars().all())
+    items = [
+        DashboardShopSummaryItem(
+            id=profile.id,
+            name=profile.name,
+            area=profile.area,
+            status=profile.status,
+            updated_at=profile.updated_at,
+        )
+        for profile in profiles
+    ]
+    return DashboardShopListResponse(shops=items)
 
 
 def _update_contact_json(
